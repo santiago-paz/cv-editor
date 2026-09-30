@@ -21,7 +21,11 @@ execFileSync("npx", ["--yes", "auth@1.7.6", "migrate", "--config", "src/lib/serv
 
 /* One row per AI request: who, when, how many tokens, and whether the
    suggestion was used. Never the text. Deleting a user deletes their rows. */
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+/* verify-full is what pg already does for Neon's sslmode=require; naming it
+   stops pg's warning. src/lib/server/db.ts does the same. */
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL.replace(/([?&]sslmode=)require(?=&|$)/, "$1verify-full"),
+});
 await pool.query(`
   create table if not exists ai_log (
     id bigserial primary key,

@@ -26,6 +26,11 @@ export async function fetchPdf(cv: Cv, photo: string | null): Promise<Blob> {
   } catch {
     throw new Error("Could not reach the server to make the PDF.");
   }
+  /* Vercel's firewall allows each address 20 PDFs a minute, and answers the
+     rest itself, with no JSON. */
+  if (response.status === 429) {
+    throw new Error("Too many PDFs came from this network in the last minute. Wait a minute, then try again.");
+  }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error || `The server could not make the PDF (error ${response.status}).`);

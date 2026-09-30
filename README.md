@@ -80,8 +80,11 @@ second.
 Anywhere else, run `npm run build` and `npm start` on a machine with Chrome or
 Chromium, and set `CHROME_PATH` if it isn't in a standard place.
 
-The route has no rate limit. If you put it on the public internet, add one in
-front of it, because each request opens a Chrome page.
+Each request opens a Chrome page, so the live site limits the route. A rule in
+the project's Vercel Firewall lets each IP address make 20 PDFs a minute and
+answers the rest with a 429. The editor then asks the person to wait a minute
+and offers the browser's print dialog. The rule lives in Vercel's settings, not
+in this repo, so another host needs its own limit.
 
 ## Donate link and credit
 
