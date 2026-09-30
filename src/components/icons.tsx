@@ -11,6 +11,8 @@ const PATHS = {
   open: "M4 2.5 7.5 6 4 9.5",
   shut: "M2.5 4 6 7.5 9.5 4",
   upload: "M6 8V1.5M3.25 4.25 6 1.5l2.75 2.75M2 10.5h8",
+  out: "M4.5 2.5h5v5M9.5 2.5 2.5 9.5",
+  rail: "M1.5 2.5h9v7h-9zM4.5 2.5v7",
 } as const;
 
 export type IconName = keyof typeof PATHS;

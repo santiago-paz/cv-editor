@@ -6,7 +6,19 @@ import { sampleCv } from "@/lib/cv/sample";
 import { isPhotoUri, readCv, readPhoto } from "@/lib/cv/schema";
 import { css as sidebarCss } from "@/lib/cv/templates/sidebar";
 import { paginate } from "@/lib/paginate";
-import { backup, loadCvs, loadUi, readBackup, saveCvs, saveUi } from "@/lib/storage";
+import {
+  backup,
+  isTabOnly,
+  loadCvs,
+  loadPhoto,
+  loadUi,
+  moveToBrowser,
+  moveToTab,
+  readBackup,
+  saveCvs,
+  savePhoto,
+  saveUi,
+} from "@/lib/storage";
 
 describe("readCv", () => {
   it("reads a CV back unchanged", () => {
@@ -81,6 +93,51 @@ describe("storage", () => {
     expect(restored.photo?.src).toBe("data:image/jpeg;base64,AAAA");
     expect(() => readBackup("not json")).toThrow(/not a backup/);
     expect(() => readBackup("{}")).toThrow(/no CVs/);
+  });
+});
+
+describe("a tab that forgets its CVs", () => {
+  const photo = { src: "data:image/jpeg;base64,AAAA" };
+
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it("moves the CVs and the photo out of the browser and into the tab", () => {
+    const cvs = [sampleCv()];
+    saveCvs(cvs);
+    savePhoto(photo);
+    expect(moveToTab(cvs, photo)).toEqual({ ok: true });
+    expect(isTabOnly()).toBe(true);
+    expect(localStorage.getItem("cv-editor.v1.cvs")).toBeNull();
+    expect(localStorage.getItem("cv-editor.v1.photo")).toBeNull();
+    expect(loadCvs()).toEqual(cvs);
+    expect(loadPhoto()).toEqual(photo);
+  });
+
+  it("saves into the tab while it forgets, and leaves the view settings alone", () => {
+    saveUi({ theme: "dark" });
+    moveToTab([], null);
+    saveCvs([sampleCv()]);
+    expect(localStorage.getItem("cv-editor.v1.cvs")).toBeNull();
+    expect(loadCvs()).toHaveLength(1);
+    expect(loadUi()).toEqual({ theme: "dark" });
+  });
+
+  it("moves back to the browser, keeping the newer copy of each CV", () => {
+    const mine = { ...sampleCv(), id: "a", updatedAt: 2 };
+    const older = { ...sampleCv(), id: "a", updatedAt: 1, title: "Older" };
+    const theirs = { ...sampleCv(), id: "b", updatedAt: 1 };
+    moveToTab([mine], photo);
+    localStorage.setItem("cv-editor.v1.cvs", JSON.stringify({ version: 1, cvs: [older, theirs] }));
+    const moved = moveToBrowser([mine], photo);
+    expect(moved.result).toEqual({ ok: true });
+    expect(moved.cvs.map(cv => [cv.id, cv.updatedAt])).toEqual([["a", 2], ["b", 1]]);
+    expect(isTabOnly()).toBe(false);
+    expect(sessionStorage.length).toBe(0);
+    expect(loadCvs()).toEqual(moved.cvs);
+    expect(loadPhoto()).toEqual(photo);
   });
 });
 

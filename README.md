@@ -24,6 +24,11 @@ gauge at the foot of the screen says how full the last page is.
 - Headings in English, Spanish or German.
 - As many CVs as you like: duplicate one for each job, and back them all up to
   a JSON file you can restore in any browser.
+- One Settings button holds the rest: the theme, the zoom, backups, and a
+  switch that forgets your CVs when you close the tab. That switch is for a
+  shared computer. The CVs and photo then live in the tab's sessionStorage.
+- The button at the left of the header folds the CV list away, to give the
+  preview more room. The editor remembers it for next time.
 - Bold, italics and links in the summary and bullets. Pasted text arrives as
   plain text.
 
@@ -77,6 +82,22 @@ Chromium, and set `CHROME_PATH` if it isn't in a standard place.
 The route has no rate limit. If you put it on the public internet, add one in
 front of it, because each request opens a Chrome page.
 
+## Donate link and credit
+
+The CV list ends with a "Made by" line and a Donate link. The first PDF of
+each visit also shows a short note with a Donate button. Donate goes to the
+PayPal.me link in `src/lib/site.ts`. Two environment variables can change
+where the links point:
+
+| Variable | What it sets |
+| --- | --- |
+| `NEXT_PUBLIC_DONATE_URL` | Replaces the PayPal.me link. |
+| `NEXT_PUBLIC_AUTHOR_URL` | Where the author's name links. Unset, the name shows as plain text. |
+
+Only `https://` addresses count, and anything else hides its link. Next.js
+writes both into the JavaScript at build time, so after you set them in
+Vercel, deploy again.
+
 ## Tests
 
 ```bash
@@ -106,7 +127,8 @@ npm run typecheck
 | `src/lib/cv/templates/` | The two templates: their print stylesheets and markup |
 | `src/lib/paginate.ts` | Where Chrome will break the pages |
 | `src/lib/measure.ts` | Reads the preview's layout for that math |
-| `src/lib/storage.ts` | localStorage and backups |
+| `src/lib/storage.ts` | localStorage, the tab that forgets its CVs, and backups |
+| `src/lib/site.ts` | The Donate and author links |
 | `src/lib/server/` | Chrome, the PDF and its metadata, the server's sanitizer |
 | `src/app/api/pdf/route.ts` | The PDF route |
 | `src/components/` | The editor |

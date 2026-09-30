@@ -40,6 +40,14 @@ interface Box {
   height: number;
 }
 
+/** True when an element's text is light. It then sits on a dark band, where
+    the pick outline has to be light to show. */
+function onDark(element: Element): boolean {
+  const color = element.ownerDocument.defaultView?.getComputedStyle(element).color ?? "";
+  const [r = 0, g = 0, b = 0] = color.match(/[\d.]+/g)?.map(Number) ?? [];
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 150;
+}
+
 export default function Proof({
   rendered,
   template,
@@ -63,7 +71,7 @@ export default function Proof({
   const [cuts, setCuts] = useState<number[]>([]);
   const [flags, setFlags] = useState<(Box & { title: string })[]>([]);
   const [scale, setScale] = useState(1);
-  const [hover, setHover] = useState<Box | null>(null);
+  const [hover, setHover] = useState<(Box & { dark: boolean }) | null>(null);
 
   const margin = {
     top: template.margin.top * PX_PER_MM,
@@ -190,8 +198,11 @@ export default function Proof({
     return () => observer.disconnect();
   }, [zoom, sheetWidth, measure]);
 
-  /* What sits under the pointer, as the element carrying its field path. */
-  function target(event: MouseEvent): { path: string; box: Box } | null {
+  /* What sits under the pointer, as the element carrying its field path.
+     Every element at the point is checked, not just the top one: the Sidebar
+     template's rail sits under the body so it prints behind every page, and
+     the top element there is the body. */
+  function target(event: MouseEvent): { path: string; box: Box & { dark: boolean } } | null {
     const element = frame.current;
     const doc = element?.contentDocument;
     if (!element || !doc) return null;
@@ -199,12 +210,21 @@ export default function Proof({
     const x = (event.clientX - r.left) / scale;
     const y = (event.clientY - r.top) / scale;
     if (x < 0 || y < 0 || x > innerWidth || y > height) return null;
-    const hit = doc.elementFromPoint(x, y)?.closest<HTMLElement>("[data-edit]");
+    const hit = doc
+      .elementsFromPoint(x, y)
+      .map(found => found.closest<HTMLElement>("[data-edit]"))
+      .find(found => found !== null);
     if (!hit) return null;
     const box = hit.getBoundingClientRect();
     return {
       path: hit.dataset.edit || "",
-      box: { top: margin.top + box.top, left: margin.left + box.left, width: box.width, height: box.height },
+      box: {
+        top: margin.top + box.top,
+        left: margin.left + box.left,
+        width: box.width,
+        height: box.height,
+        dark: onDark(hit),
+      },
     };
   }
 
@@ -255,7 +275,7 @@ export default function Proof({
               ))}
               {hover && (
                 <div
-                  className="pick"
+                  className={"pick" + (hover.dark ? " on-dark" : "")}
                   aria-hidden="true"
                   style={{ top: hover.top - 2, left: hover.left - 3, width: hover.width + 6, height: hover.height + 4 }}
                 />

@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export interface ToastAction {
-  label: string;
-  run: () => void;
-}
+/** A button that runs something, such as Undo, or a link that opens another
+    site in a new tab. */
+export type ToastAction = { label: string; run: () => void } | { label: string; href: string };
 
 interface Message {
   text: string;
@@ -35,20 +34,27 @@ export function useToast() {
 }
 
 export function Toast({ message, onDone }: { message: Message | null; onDone: () => void }) {
+  const action = message?.action;
   return (
     <div className={"toast" + (message ? " on" : "")} role="status" aria-live="polite">
       {message && <span>{message.text}</span>}
-      {message?.action && (
-        <button
-          type="button"
-          onClick={() => {
-            message.action?.run();
-            onDone();
-          }}
-        >
-          {message.action.label}
-        </button>
-      )}
+      {action &&
+        ("href" in action ? (
+          <a href={action.href} target="_blank" rel="noopener" onClick={onDone}>
+            {action.label}
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              action.run();
+              onDone();
+            }}
+          >
+            {action.label}
+          </button>
+        ))}
     </div>
   );
 }

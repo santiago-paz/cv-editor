@@ -19,9 +19,10 @@ export const viewport: Viewport = {
   ],
 };
 
-/* Sets the saved theme before the first paint, so a dark choice does not
-   flash light on load. */
-const THEME = `try{var t=JSON.parse(localStorage.getItem("cv-editor.v1.ui")||"{}").theme;if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+/* Sets the saved theme and the folded CV list before the first paint, so a
+   dark choice does not flash light on load, and a folded list does not flash
+   open. */
+const PREFS = `try{var u=JSON.parse(localStorage.getItem("cv-editor.v1.ui")||"{}"),r=document.documentElement;if(u.theme==="light"||u.theme==="dark")r.dataset.theme=u.theme;if(u.library==="collapsed")r.dataset.library="collapsed"}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -31,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME }} />
+        <script dangerouslySetInnerHTML={{ __html: PREFS }} />
       </head>
       <body>{children}</body>
     </html>

@@ -54,6 +54,7 @@ body {
 
 :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 button { touch-action: manipulation; font: inherit; color: inherit; -webkit-tap-highlight-color: color-mix(in srgb, var(--teal) 18%, transparent); }
+a { touch-action: manipulation; }
 
 /* The rail's header is sticky, so a field reached by Tab or by a click on the
    proof stops below it rather than under it. */
@@ -68,11 +69,18 @@ button { touch-action: manipulation; font: inherit; color: inherit; -webkit-tap-
 /* ---------------------------------------------------------------- shell */
 
 .app {
+  --left: 236px;
   display: grid; height: 100vh; height: 100dvh;
-  grid-template-columns: 236px minmax(0, 1fr) 420px;
+  grid-template-columns: var(--left) minmax(0, 1fr) 420px;
   grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas: "top top top" "left stage right" "foot foot foot";
 }
+
+/* The CV list folds away and gives its width to the proof. The flag sits on
+   the root, set before the first paint (see layout.tsx). */
+:root[data-library="collapsed"] .app { --left: 0px; }
+:root[data-library="collapsed"] .rail-left { display: none; }
+.rail-toggle { margin-left: -7px; }
 
 .top {
   grid-area: top; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
@@ -84,7 +92,9 @@ button { touch-action: manipulation; font: inherit; color: inherit; -webkit-tap-
 }
 .mark svg { width: 16px; height: 20px; flex: none; }
 .mark s { text-decoration: none; color: var(--dim); letter-spacing: .12em; }
-.top .spacer { margin-left: auto; }
+/* The save state and Settings keep together at the right, even when the
+   header wraps. */
+.top-end { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 
 .tog {
   font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
@@ -93,6 +103,37 @@ button { touch-action: manipulation; font: inherit; color: inherit; -webkit-tap-
 }
 .tog:hover:not([disabled]) { color: var(--ink); border-color: var(--ink); }
 .tog[disabled] { opacity: .5; cursor: default; }
+.tog[aria-expanded="true"] { color: var(--ink); border-color: var(--ink); }
+
+/* Everything that is not the CV sits behind one button: how the editor
+   looks, and where the CVs live. It opens as a slip under the header. */
+.settings { position: relative; }
+.settings-panel {
+  position: absolute; z-index: 25; right: 0; top: calc(100% + 8px);
+  width: min(300px, calc(100vw - 32px)); padding: 14px; display: grid; gap: 12px;
+  background: var(--strip); border: 1px solid var(--rule); border-radius: 3px; box-shadow: var(--sheet-shadow);
+}
+.settings-panel hr { width: 100%; margin: 2px 0; border: 0; border-top: 1px solid var(--hair); }
+.settings-panel .buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.settings-panel .switch { align-items: flex-start; font-size: 12px; line-height: 1.4; }
+.settings-panel .switch input { margin-top: 1px; }
+.settings-note { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.setting-name { font-family: var(--mono); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+
+/* A segmented control, drawn like the Edit / Preview switch. Real radio
+   buttons sit under each segment. */
+.seg { display: flex; border: 1px solid var(--rule); border-radius: 2px; overflow: hidden; }
+.seg label { position: relative; cursor: pointer; }
+.seg label + label { border-left: 1px solid var(--rule); }
+.seg input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.seg span {
+  display: block; padding: 5px 10px; color: var(--dim);
+  font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+}
+.seg label:hover span { color: var(--ink); }
+.seg input:checked + span { color: var(--ink); background: color-mix(in srgb, var(--teal) 12%, transparent); box-shadow: inset 0 -2px 0 var(--teal); }
+.seg input:focus-visible + span { outline: 2px solid var(--teal); outline-offset: -2px; }
 
 .saved { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
 .saved.ok { color: var(--teal); }
@@ -167,9 +208,19 @@ button { touch-action: manipulation; font: inherit; color: inherit; -webkit-tap-
 .cv-row:is(:hover, :focus-within, :has(> [aria-current="true"])) .when { visibility: hidden; }
 .row-actions .iconbtn { background: var(--strip); }
 
-.lib-foot { margin-top: auto; padding: 18px 16px 0; display: grid; gap: 8px; }
-.lib-foot .buttons { display: flex; gap: 6px; flex-wrap: wrap; }
-.lib-note { margin: 0; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
+.lib-foot { margin-top: auto; padding: 18px 16px 0; }
+/* The imprint: who made the editor, set like the printer's line at the foot
+   of a page. Donate takes the rose of the mark's cut line. */
+.colophon {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px;
+  margin: 0; padding-top: 10px; border-top: 1px solid var(--hair);
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim);
+}
+.colophon a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.colophon a:hover { text-decoration-color: currentColor; }
+.colophon .donate { display: inline-flex; align-items: center; gap: 5px; color: var(--rose); text-decoration: none; }
+.colophon .donate:hover { text-decoration: underline; }
+.colophon svg { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------------------------------------------------- stage: the proof */
 
@@ -213,6 +264,11 @@ button { touch-action: manipulation; font: inherit; color: inherit; -webkit-tap-
   position: absolute; pointer-events: none; border-radius: 2px;
   outline: 1.5px solid color-mix(in srgb, var(--teal) 70%, transparent);
   background: color-mix(in srgb, var(--teal) 6%, transparent);
+}
+/* On the Sidebar's dark rail, teal would vanish into the band. */
+.pick.on-dark {
+  outline-color: color-mix(in srgb, var(--paper) 85%, transparent);
+  background: color-mix(in srgb, var(--paper) 10%, transparent);
 }
 
 .sr-only {
@@ -559,12 +615,14 @@ input.mono { font-family: var(--mono); font-size: 12px; }
   transition: opacity .18s ease, transform .18s ease; max-width: min(620px, calc(100vw - 32px));
 }
 .toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
-.toast button {
+/* A PDF's file name is one long word. */
+.toast > span { min-width: 0; overflow-wrap: anywhere; }
+.toast :is(button, a) {
   flex: none; background: none; border: 1px solid color-mix(in srgb, var(--board) 45%, transparent);
-  color: var(--board); border-radius: 2px; padding: 4px 9px; cursor: pointer;
+  color: var(--board); border-radius: 2px; padding: 4px 9px; cursor: pointer; text-decoration: none;
   font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
 }
-.toast button:hover { border-color: var(--board); }
+.toast :is(button, a):hover { border-color: var(--board); }
 
 /* A field reached by clicking its text on the proof glows once. */
 @keyframes found { from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 45%, transparent); } to { box-shadow: 0 0 0 3px transparent; } }
@@ -588,7 +646,7 @@ input.mono { font-family: var(--mono); font-size: 12px; }
 }
 
 @media (max-width: 1240px) {
-  .app { grid-template-columns: 200px minmax(0, 1fr) 360px; }
+  .app { --left: 200px; grid-template-columns: var(--left) minmax(0, 1fr) 360px; }
 }
 
 /* Below this the rails stack, and the Edit / Preview switch picks one. */
@@ -605,12 +663,19 @@ input.mono { font-family: var(--mono); font-size: 12px; }
      the page gauges keep counting while the fields are shown. */
   .app[data-view="edit"] .stage { position: absolute; left: -10000px; top: 0; width: 900px; visibility: hidden; }
   .app[data-view="preview"] .rail-right, .app[data-view="preview"] .rail-left { display: none; }
+  /* The preview hides the list anyway. */
+  .app[data-view="preview"] .rail-toggle { display: none; }
   .stage { padding: 16px 0 40px; }
   .stage-inner { padding: 0 16px; }
   .foot { position: sticky; bottom: 0; z-index: 5; gap: 12px; }
   .foot .note { flex-basis: 100%; order: 5; margin: 0; }
   .open-on { position: static; }
   .top .hide-narrow { display: none; }
+  /* Settings opens across the screen, under the header, wherever its button
+     wrapped to. */
+  .top { position: relative; }
+  .settings { position: static; }
+  .settings-panel { left: 16px; right: 16px; width: auto; }
 }
 
 @media (max-width: 520px) {

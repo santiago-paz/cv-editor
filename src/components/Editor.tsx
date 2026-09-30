@@ -11,11 +11,15 @@ import { TEMPLATES } from "@/lib/cv/templates";
 import type { Cv, Photo } from "@/lib/cv/types";
 import { fetchPdf, printCv, saveBlob } from "@/lib/download";
 import { sanitize } from "@/lib/sanitize";
+import { DONATE_URL } from "@/lib/site";
 import {
   backup,
+  isTabOnly,
   loadCvs,
   loadPhoto,
   loadUi,
+  moveToBrowser,
+  moveToTab,
   readBackup,
   saveCvs,
   savePhoto,
@@ -32,6 +36,7 @@ import PhotoPane from "./PhotoPane";
 import Proof, { type Measure } from "./Proof";
 import RichToolbar from "./RichToolbar";
 import SectionsTab from "./SectionsTab";
+import Settings from "./Settings";
 import { Toast, useToast } from "./Toast";
 
 type Tab = "details" | "sections" | "design";
@@ -51,10 +56,11 @@ const TIME = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digi
 
 const newest = (list: Cv[]) => [...list].sort((a, b) => b.updatedAt - a.updatedAt)[0];
 
-/* What the editor starts from: whatever this browser has kept. It runs in
-   the browser only (see EditorLoader), so it can read localStorage while the
-   first render is worked out. */
+/* What the editor starts from: whatever this browser, or this tab, has kept.
+   It runs in the browser only (see EditorLoader), so it can read storage
+   while the first render is worked out. */
 function start() {
+  const tabOnly = isTabOnly();
   const available = storageAvailable();
   const stored = available ? loadCvs() : null;
   /* First visit: the sample. A list emptied on purpose stays empty. */
@@ -62,6 +68,7 @@ function start() {
   const ui: Ui = available ? loadUi() : {};
   const first = cvs.find(cv => cv.id === ui.openId) ?? newest(cvs);
   return {
+    tabOnly,
     available,
     loaded: stored !== null,
     cvs,
@@ -86,7 +93,10 @@ export default function Editor() {
   const [open, setOpen] = useState<Record<string, boolean>>(boot.open);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
+  const [tabOnly, setTabOnly] = useState(boot.tabOnly);
   const toast = useToast();
+  /* The first PDF of a visit mentions donations. Later ones do not. */
+  const askedToDonate = useRef(false);
 
   const openRef = useRef(openId);
   const cvsRef = useRef(cvs);
@@ -156,6 +166,15 @@ export default function Editor() {
     if (ui.theme) root.dataset.theme = ui.theme;
     else delete root.dataset.theme;
   }, [ui.theme]);
+
+  /* The folded CV list is drawn from the root, like the theme, so the page
+     that loads before the editor folds it too. */
+  const listShown = ui.library !== "collapsed";
+  useEffect(() => {
+    const root = document.documentElement;
+    if (listShown) delete root.dataset.library;
+    else root.dataset.library = "collapsed";
+  }, [listShown]);
 
   /* ------------------------------------------------------------ the CV */
 
@@ -316,6 +335,47 @@ export default function Editor() {
     }
   }
 
+  /* ------------------------------------------------- where the CVs live */
+
+  function chooseTabOnly(on: boolean) {
+    /* A save still waiting would land in the store being left. The move
+       takes the latest list itself. */
+    window.clearTimeout(pendingSave.current);
+    pendingSave.current = 0;
+    if (on) {
+      const result = moveToTab(cvsRef.current, photo);
+      if (!result.ok) {
+        say(
+          result.reason === "full"
+            ? "This tab has no room for your CVs, so they stay saved in this browser."
+            : "This browser does not let a tab keep its own copy, so your CVs stay saved in the browser.",
+        );
+        return;
+      }
+      setTabOnly(true);
+      setSaved({ ok: true });
+      toast.show("This tab now forgets your CVs when you close it. Back up any you want to keep.", {
+        action: { label: "Back up", run: backUp },
+        ms: 9000,
+      });
+      return;
+    }
+    const moved = moveToBrowser(cvsRef.current, photo);
+    if (!moved.result.ok) {
+      say(
+        moved.result.reason === "full"
+          ? "This browser's storage is full, so your CVs stay in this tab only. Delete some CVs, or back them up."
+          : "This browser does not let the editor save, so your CVs stay in this tab only.",
+      );
+      return;
+    }
+    setTabOnly(false);
+    fromStorage.current = true;
+    setCvs(moved.cvs);
+    setSaved({ ok: true });
+    say("Your CVs are saved in this browser again.");
+  }
+
   /* ---------------------------------------------------------- download */
 
   async function download() {
@@ -327,6 +387,13 @@ export default function Editor() {
       const name = fileName(cv);
       saveBlob(blob, name);
       setNote({ text: `Downloaded ${name}` });
+      if (DONATE_URL && !askedToDonate.current) {
+        askedToDonate.current = true;
+        toast.show(`Downloaded ${name}. If the editor helped, you can support it with a donation.`, {
+          action: { label: "Donate", href: DONATE_URL },
+          ms: 10_000,
+        });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "The PDF could not be made.";
       setNote({ text: message, bad: true });
@@ -348,7 +415,7 @@ export default function Editor() {
       if (key === "s") {
         event.preventDefault();
         flush();
-        toast.show("Saved in this browser. Everything saves as you type.");
+        toast.show(`Saved in this ${tabOnly ? "tab" : "browser"}. Everything saves as you type.`);
       }
       if (key === "p" && cv) {
         event.preventDefault();
@@ -357,7 +424,7 @@ export default function Editor() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cv, photo, flush, toast]);
+  }, [cv, photo, flush, toast, tabOnly]);
 
   /* ---------------------------------------------------- click to edit */
 
@@ -401,8 +468,12 @@ export default function Editor() {
   const wasteTone = !measure ? "" : measure.stranded || measure.worstDead > 25 ? "warn" : "ok";
   const photoUsers = cvs.filter(item => item.showPhoto).length;
 
+  /* The header already says the CVs stay in the browser, so a plain save
+     needs one word. Only the tab that forgets says where. */
   const savedText = saved.ok
-    ? "Saved in this browser"
+    ? tabOnly
+      ? "Saved in this tab"
+      : "Saved"
     : saved.reason === "full"
       ? "Not saved: storage is full"
       : "Not saved: this browser blocks storage";
@@ -414,6 +485,17 @@ export default function Editor() {
       </a>
 
       <header className="top">
+        <button
+          type="button"
+          className="iconbtn rail-toggle"
+          aria-label="Your CVs"
+          title={listShown ? "Hide your CVs" : "Show your CVs"}
+          aria-expanded={listShown}
+          aria-controls="library"
+          onClick={() => setPrefs({ library: listShown ? "collapsed" : undefined })}
+        >
+          <Icon name="rail" />
+        </button>
         <h1 className="mark">
           <Mark /> CV Editor <s className="hide-narrow">/ no account, saved in your browser</s>
         </h1>
@@ -425,26 +507,20 @@ export default function Editor() {
             Preview
           </button>
         </div>
-        <span className="spacer" />
-        <span className={"saved " + (saved.ok ? "ok" : "bad")} role="status" aria-live="polite">
-          {savedText}
-        </span>
-        <button
-          type="button"
-          className="tog hide-narrow"
-          onClick={() => setPrefs({ zoom: ui.zoom === "actual" ? "fit" : "actual" })}
-        >
-          Zoom: {ui.zoom === "actual" ? "100%" : "fit"}
-        </button>
-        <button
-          type="button"
-          className="tog"
-          onClick={() =>
-            setPrefs({ theme: ui.theme === undefined ? "light" : ui.theme === "light" ? "dark" : undefined })
-          }
-        >
-          Theme: {ui.theme ?? "auto"}
-        </button>
+        <div className="top-end">
+          <span className={"saved " + (saved.ok ? "ok" : "bad")} role="status" aria-live="polite">
+            {savedText}
+          </span>
+          <Settings
+            ui={ui}
+            onUi={setPrefs}
+            count={cvs.length}
+            tabOnly={tabOnly}
+            onTabOnly={chooseTabOnly}
+            onBackup={backUp}
+            onRestore={file => void restore(file)}
+          />
+        </div>
       </header>
 
       <Library
@@ -454,8 +530,6 @@ export default function Editor() {
         onNew={newCv}
         onDuplicate={duplicateCv}
         onDelete={deleteCv}
-        onBackup={backUp}
-        onRestore={file => void restore(file)}
       />
 
       {cv && rendered ? (

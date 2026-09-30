@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef } from "react";
 import type { Cv } from "@/lib/cv/types";
+import { AUTHOR, DONATE_URL } from "@/lib/site";
 import { IconButton } from "./fields";
+import { Icon } from "./icons";
 
 /* The CVs in this browser, grouped by the day each was last changed. */
 
@@ -30,8 +31,6 @@ export default function Library({
   onNew,
   onDuplicate,
   onDelete,
-  onBackup,
-  onRestore,
 }: {
   cvs: Cv[];
   openId: string | null;
@@ -39,10 +38,7 @@ export default function Library({
   onNew: () => void;
   onDuplicate: (id: string) => void;
   onDelete: (id: string) => void;
-  onBackup: () => void;
-  onRestore: (file: File) => void;
 }) {
-  const file = useRef<HTMLInputElement>(null);
   const now = new Date();
   const sorted = [...cvs].sort((a, b) => b.updatedAt - a.updatedAt);
   const groups: { key: string; items: Cv[] }[] = [];
@@ -54,7 +50,7 @@ export default function Library({
   }
 
   return (
-    <nav className="rail-left" aria-label="Your CVs">
+    <nav className="rail-left" id="library" aria-label="Your CVs">
       <div className="lib-head">
         <h2>Your CVs</h2>
         <span className="count">{cvs.length}</span>
@@ -94,28 +90,26 @@ export default function Library({
       ))}
 
       <div className="lib-foot">
-        <p className="lib-note">
-          Your CVs are saved in this browser only. Clearing its site data deletes them, so keep a backup.
+        <p className="colophon">
+          <span>
+            Made by{" "}
+            {AUTHOR.url ? (
+              <a href={AUTHOR.url} target="_blank" rel="noopener">
+                {AUTHOR.name}
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            ) : (
+              AUTHOR.name
+            )}
+          </span>
+          {DONATE_URL && (
+            <a className="donate" href={DONATE_URL} target="_blank" rel="noopener">
+              Donate
+              <span className="sr-only"> with PayPal (opens in a new tab)</span>
+              <Icon name="out" />
+            </a>
+          )}
         </p>
-        <div className="buttons">
-          <button type="button" className="tog" onClick={onBackup} disabled={!cvs.length}>
-            Back up
-          </button>
-          <button type="button" className="tog" onClick={() => file.current?.click()}>
-            Restore
-          </button>
-        </div>
-        <input
-          ref={file}
-          type="file"
-          accept="application/json,.json"
-          hidden
-          onChange={event => {
-            const picked = event.target.files?.[0];
-            event.target.value = "";
-            if (picked) onRestore(picked);
-          }}
-        />
       </div>
     </nav>
   );
