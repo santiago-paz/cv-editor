@@ -3,10 +3,11 @@
 import { memo, useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import { bullet, link, project, role, row, section as newSection } from "@/lib/cv/defaults";
 import { PRESETS, PRESET_ORDER } from "@/lib/cv/labels";
-import type { Bullet, Cv, Project, Role, Section } from "@/lib/cv/types";
+import type { Bullet, Cv, Locale, Project, Role, Section } from "@/lib/cv/types";
 import { textOf } from "@/lib/html";
 import type { Update } from "./DetailsTab";
 import { IconButton, RichField, RowButtons, Text, focusLater, move } from "./fields";
+import Improve from "./Improve";
 
 type Toast = (text: string, undo?: () => void) => void;
 
@@ -204,7 +205,7 @@ export default function SectionsTab({
               </div>
               {isOpen && (
                 <div className="sec-body" id={`sec-body-${section.id}`}>
-                  <SectionBody section={section} update={update} toast={toast} />
+                  <SectionBody section={section} update={update} toast={toast} locale={cv.locale} />
                 </div>
               )}
             </section>
@@ -254,7 +255,17 @@ export default function SectionsTab({
 
 /* ----------------------------------------------------------- the entries */
 
-function SectionBody({ section, update, toast }: { section: Section; update: Update; toast: Toast }) {
+function SectionBody({
+  section,
+  update,
+  toast,
+  locale,
+}: {
+  section: Section;
+  update: Update;
+  toast: Toast;
+  locale: Locale;
+}) {
   const sid = section.id;
 
   switch (section.kind) {
@@ -272,6 +283,7 @@ function SectionBody({ section, update, toast }: { section: Section; update: Upd
               education={education}
               update={update}
               toast={toast}
+              locale={locale}
             />
           ))}
           <button
@@ -303,6 +315,7 @@ function SectionBody({ section, update, toast }: { section: Section; update: Upd
               total={section.items.length}
               update={update}
               toast={toast}
+              locale={locale}
             />
           ))}
           <button
@@ -415,23 +428,40 @@ function SectionBody({ section, update, toast }: { section: Section; update: Upd
             })
           }
           toast={toast}
+          improve={{ title: section.title, dates: "", locale }}
         />
       );
     case "text":
       return (
-        <RichField
-          value={section.html}
-          onChange={html =>
-            update(draft => {
-              const target = inDraft(draft, sid);
-              if (target?.kind === "text") target.html = html;
-            })
-          }
-          label={section.title || "Paragraph"}
-          field={`sections.${sid}`}
-          tall
-          placeholder="Write a short paragraph…"
-        />
+        <>
+          <RichField
+            value={section.html}
+            onChange={html =>
+              update(draft => {
+                const target = inDraft(draft, sid);
+                if (target?.kind === "text") target.html = html;
+              })
+            }
+            label={section.title || "Paragraph"}
+            field={`sections.${sid}`}
+            tall
+            placeholder="Write a short paragraph…"
+          />
+          <div className="block-actions">
+            <Improve
+              kind="text"
+              blocks={[{ id: sid, html: section.html }]}
+              title={section.title}
+              locale={locale}
+              onUse={([change]) =>
+                update(draft => {
+                  const target = inDraft(draft, sid);
+                  if (target?.kind === "text" && change) target.html = change.html;
+                })
+              }
+            />
+          </div>
+        </>
       );
   }
 }
@@ -446,6 +476,7 @@ const RoleEditor = memo(function RoleEditor({
   education,
   update,
   toast,
+  locale,
 }: {
   sid: string;
   item: Role;
@@ -454,6 +485,7 @@ const RoleEditor = memo(function RoleEditor({
   education: boolean;
   update: Update;
   toast: Toast;
+  locale: Locale;
 }) {
   const edit = (recipe: (role: Role) => void) =>
     update(draft => {
@@ -530,6 +562,7 @@ const RoleEditor = memo(function RoleEditor({
         noun="bullet"
         edit={recipe => edit(role => recipe(role.bullets))}
         toast={toast}
+        improve={{ title: item.title, dates: item.dates, locale }}
       />
     </div>
   );
@@ -542,6 +575,7 @@ const ProjectEditor = memo(function ProjectEditor({
   total,
   update,
   toast,
+  locale,
 }: {
   sid: string;
   item: Project;
@@ -549,6 +583,7 @@ const ProjectEditor = memo(function ProjectEditor({
   total: number;
   update: Update;
   toast: Toast;
+  locale: Locale;
 }) {
   const edit = (recipe: (project: Project) => void) =>
     update(draft => {
@@ -658,6 +693,7 @@ const ProjectEditor = memo(function ProjectEditor({
         noun="bullet"
         edit={recipe => edit(project => recipe(project.bullets))}
         toast={toast}
+        improve={{ title: item.name, dates: "", locale }}
       />
     </div>
   );
@@ -671,12 +707,15 @@ function Bullets({
   noun,
   edit,
   toast,
+  improve,
 }: {
   bullets: Bullet[];
   path: string;
   noun: string;
   edit: (recipe: (list: Bullet[]) => void) => void;
   toast: Toast;
+  /** What the AI button tells the model about these bullets. */
+  improve?: { title: string; dates: string; locale: Locale };
 }) {
   function add(at: number) {
     const made = bullet();
@@ -744,9 +783,26 @@ function Bullets({
           </li>
         ))}
       </ul>
-      <button type="button" className="add small" onClick={() => add(bullets.length)}>
-        <span className="plus" aria-hidden="true">+</span> Add a {noun}
-      </button>
+      <div className="block-actions">
+        <button type="button" className="add small" onClick={() => add(bullets.length)}>
+          <span className="plus" aria-hidden="true">+</span> Add a {noun}
+        </button>
+        {improve && bullets.length > 0 && (
+          <Improve
+            kind="bullets"
+            blocks={bullets.map(item => ({ id: item.id, html: item.html }))}
+            {...improve}
+            onUse={changes =>
+              edit(list => {
+                for (const change of changes) {
+                  const target = list.find(one => one.id === change.id);
+                  if (target) target.html = change.html;
+                }
+              })
+            }
+          />
+        )}
+      </div>
     </>
   );
 }

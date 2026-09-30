@@ -5,6 +5,7 @@ import { language, link, skill } from "@/lib/cv/defaults";
 import type { Template } from "@/lib/cv/templates";
 import type { Cv } from "@/lib/cv/types";
 import { Field, RichField, RowButtons, Text, focusLater, move } from "./fields";
+import Improve from "./Improve";
 
 export type Update = (recipe: (draft: Cv) => void) => void;
 
@@ -285,6 +286,19 @@ export default function DetailsTab({
             placeholder="2 or 3 sentences: what you do, what you are good at, what you want next…"
           />
           <p className="hint">Recruiters skim, so 3 or 4 lines read best. Select words to make them bold.</p>
+          <div className="block-actions">
+            <Improve
+              kind="text"
+              blocks={[{ id: "summary", html: cv.summary }]}
+              title={cv.person.role}
+              locale={cv.locale}
+              onUse={([change]) =>
+                update(draft => {
+                  if (change) draft.summary = change.html;
+                })
+              }
+            />
+          </div>
         </div>
       </div>
 

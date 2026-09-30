@@ -1,5 +1,6 @@
 import { isPhotoUri, readCv } from "@/lib/cv/schema";
 import { ChromeMissing } from "@/lib/server/chrome";
+import { foreign } from "@/lib/server/origin";
 import { makePdf } from "@/lib/server/pdf";
 
 /* POST { cv, photo } -> application/pdf.
@@ -16,18 +17,6 @@ const MAX_BODY = 2_500_000;
 
 function fail(status: number, error: string): Response {
   return Response.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
-}
-
-/* Another site's page could otherwise make its visitors print through this
-   server. A request without an Origin header is not from a browser page. */
-function foreign(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  try {
-    return new URL(origin).host !== (request.headers.get("x-forwarded-host") || request.headers.get("host"));
-  } catch {
-    return true;
-  }
 }
 
 /** attachment; filename="Alex_Moreno_CV.pdf", with a UTF-8 copy for names

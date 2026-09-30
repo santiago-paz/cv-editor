@@ -1,7 +1,8 @@
 # CV Editor
 
 Write a CV in the browser, see where each page breaks, and download it as a PDF.
-There's no account and no database. Your CVs stay in your browser's localStorage.
+You don't need an account, and your CVs stay in your browser's localStorage. A
+free Google account adds one thing: a button that rewrites a block with AI.
 
 Live at https://cv-editor-ruby.vercel.app. Every push to `main` deploys there.
 
@@ -98,6 +99,46 @@ Only `https://` addresses count, and anything else hides its link. Next.js
 writes both into the JavaScript at build time, so after you set them in
 Vercel, deploy again.
 
+## Accounts and AI
+
+"Improve with AI" sits under each job, project, bullet list, paragraph and
+the summary. It sends that block's text, the title above it, the job's dates
+and the CV's language to Claude Haiku 4.5, and shows the rewrite next to the
+original. Nothing changes until you use a suggestion, and each one can be put
+back.
+
+The button needs an account, and sign-in is Google only (Better Auth). Each
+account gets 10 rewrites a day and 30 a month. The whole site stops for the
+day once it has spent about 65 cents, which keeps a month under $20. Set
+`AI_PAUSED=1` to turn the button off.
+
+The database (Neon Postgres) holds the accounts and one row per rewrite: who,
+when, how many tokens, and whether the suggestion was used. It never stores
+the text.
+
+| Variable | What it is |
+| --- | --- |
+| `DATABASE_URL` | The Neon database. Vercel's Neon integration sets it. |
+| `BETTER_AUTH_SECRET` | A random secret that signs sessions: `openssl rand -base64 32`. |
+| `BETTER_AUTH_URL` | The site's own address: `https://cv-editor-ruby.vercel.app`, or `http://localhost:3000` in development. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | A Google Cloud OAuth client of type "Web application". |
+| `ANTHROPIC_API_KEY` | A key from the Claude Console, in a workspace with a spend limit. |
+
+The Google client needs both redirect addresses:
+`https://cv-editor-ruby.vercel.app/api/auth/callback/google` and
+`http://localhost:3000/api/auth/callback/google`. Google sends people back only
+to listed addresses, so sign-in doesn't work on preview deployments.
+
+To work on it locally, pull the variables and create the tables once:
+
+```bash
+vercel env pull .env.local
+```
+
+```bash
+npm run db:migrate
+```
+
 ## Tests
 
 ```bash
@@ -105,7 +146,8 @@ npm test
 ```
 
 The tests cover the sanitizer (browser and server must agree), the templates'
-escaping, the checks that repair an imported backup, storage, and the page math.
+escaping, the checks that repair an imported backup, storage, the page math,
+and what the AI button may send and how its reply gets cleaned.
 Two of them start Chrome: one prints CVs and reads the text back with
 `pdftotext`, and one checks that the preview's page breaks land where the PDF
 breaks. Both skip themselves when Chrome is missing, and the text checks need
@@ -129,9 +171,14 @@ npm run typecheck
 | `src/lib/measure.ts` | Reads the preview's layout for that math |
 | `src/lib/storage.ts` | localStorage, the tab that forgets its CVs, and backups |
 | `src/lib/site.ts` | The Donate and author links |
-| `src/lib/server/` | Chrome, the PDF and its metadata, the server's sanitizer |
+| `src/lib/ai.ts` | What the AI button sends and gets back, and its limits |
+| `src/lib/server/` | Chrome, the PDF and its metadata, the server's sanitizer, sign-in, the database, the model call and its usage counts |
 | `src/app/api/pdf/route.ts` | The PDF route |
+| `src/app/api/ai/` | The AI routes: rewrite, accept, usage |
+| `src/app/api/auth/` | Sign-in, handled by Better Auth |
+| `src/app/privacy/`, `src/app/terms/` | The privacy page and the terms |
 | `src/components/` | The editor |
+| `scripts/migrate.mjs` | Creates the database tables |
 | `public/fonts/` | PT Sans, PT Serif and Inter, copied from `@fontsource` by `npm run fonts` |
 
 ## Fonts
