@@ -26,14 +26,17 @@ export async function fetchPdf(cv: Cv, photo: string | null): Promise<Blob> {
   } catch {
     throw new Error("Could not reach the server to make the PDF.");
   }
-  /* Vercel's firewall allows each address 20 PDFs a minute, and answers the
-     rest itself, with no JSON. */
+  /* Vercel's firewall allows each address 20 PDFs a minute and answers the
+     rest itself, before the route runs. */
   if (response.status === 429) {
     throw new Error("Too many PDFs came from this network in the last minute. Wait a minute, then try again.");
   }
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error || `The server could not make the PDF (error ${response.status}).`);
+    /* The route puts a message in "error". Vercel's own replies put an
+       object there, which is no use to show. */
+    const body = (await response.json().catch(() => null)) as { error?: unknown } | null;
+    const message = typeof body?.error === "string" ? body.error : "";
+    throw new Error(message || `The server could not make the PDF (error ${response.status}).`);
   }
   return response.blob();
 }

@@ -59,9 +59,12 @@ export default function Improve({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind, title, dates, locale, items: originals.map(block => block.html) }),
       });
-      const body = (await response.json().catch(() => null)) as (RewriteReply & { error?: string }) | null;
+      const body = (await response.json().catch(() => null)) as (RewriteReply & { error?: unknown }) | null;
       if (!response.ok || !body) {
-        setState({ step: "error", message: body?.error || `The rewrite failed (error ${response.status}).` });
+        /* Vercel's own replies, such as its firewall's, put an object in
+           "error". Only the route's text is fit to show. */
+        const message = typeof body?.error === "string" ? body.error : "";
+        setState({ step: "error", message: message || `The rewrite failed (error ${response.status}).` });
         return;
       }
       setState({ step: "done", reply: body, originals, used: new Set() });

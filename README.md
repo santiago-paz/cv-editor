@@ -150,7 +150,8 @@ npm test
 
 The tests cover the sanitizer (browser and server must agree), the templates'
 escaping, the checks that repair an imported backup, storage, the page math,
-and what the AI button may send and how its reply gets cleaned.
+what the AI button may send and how its reply gets cleaned, and what the
+editor says when the server won't make a PDF.
 Two of them start Chrome: one prints CVs and reads the text back with
 `pdftotext`, and one checks that the preview's page breaks land where the PDF
 breaks. Both skip themselves when Chrome is missing, and the text checks need
