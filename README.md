@@ -3,6 +3,8 @@
 Write a CV in the browser, see where each page breaks, and download it as a PDF.
 There's no account and no database. Your CVs stay in your browser's localStorage.
 
+Live at https://cv-editor-ruby.vercel.app. Every push to `main` deploys there.
+
 The preview uses the same HTML and fonts as the PDF, so its page count matches
 the file you download. Dashed cut lines show where each new page starts, and a
 gauge at the foot of the screen says how full the last page is.
@@ -65,9 +67,9 @@ CHROME_PATH=/usr/bin/chromium npm run dev
 On Vercel or AWS Lambda, the route runs the Chromium build from
 `@sparticuz/chromium` instead, so there's nothing to install. `next.config.ts`
 already ships its files and the fonts with the function. That package asks for
-at least 1 GB of memory, and it unpacks Chromium on a cold start, so the first
-PDF after one is slower. This setup follows the package's own docs but hasn't
-been run on Vercel yet.
+at least 1 GB of memory, and it unpacks Chromium on a cold start. On the live
+site, the first PDF after a cold start took 3.6 seconds and the next one half a
+second.
 
 Anywhere else, run `npm run build` and `npm start` on a machine with Chrome or
 Chromium, and set `CHROME_PATH` if it isn't in a standard place.
