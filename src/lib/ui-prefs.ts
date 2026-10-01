@@ -14,6 +14,8 @@ export interface Ui {
   lang?: Lang;
   /** Set when the CV list is folded away. */
   library?: "collapsed";
+  /** Set when the person has closed the note under the Next button. */
+  serversNote?: "closed";
 }
 
 export function loadUi(): Ui {

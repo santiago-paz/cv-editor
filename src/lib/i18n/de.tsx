@@ -264,6 +264,8 @@ const de: Dict = {
         {terms}
       </>
     ),
+    /** The label of the cross that closes that note. */
+    closeNote: "Hinweis schließen",
     /** What each kind of section is for, shown in the "Abschnitt hinzufügen" menu. */
     hints: {
       experience: "Jobs mit Zeitraum und Punkten",

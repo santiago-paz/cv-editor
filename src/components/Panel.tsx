@@ -91,6 +91,8 @@ export default function Panel({
   pdf,
   onFocusPath,
   onNew,
+  noteClosed,
+  onCloseNote,
 }: {
   cv: Cv;
   update: Update;
@@ -104,6 +106,9 @@ export default function Panel({
   onFocusPath: (path: string | null) => void;
   /** Starts a blank CV, offered when the open one is the sample. */
   onNew: () => void;
+  /** The person closed the note under the Next button, and it stays closed. */
+  noteClosed: boolean;
+  onCloseNote: () => void;
 }) {
   const t = useT();
   const steps = stepsOf(cv, t.panel);
@@ -318,12 +323,29 @@ export default function Panel({
           )}
         </div>
         {/* Said where the PDF button is, because the PDF file download is what sends a whole CV to a server. */}
-        <p className="nav-note">
-          {t.panel.serversNote(
-            <LegalLink page="privacy">{t.settings.privacy}</LegalLink>,
-            <LegalLink page="terms">{t.settings.terms}</LegalLink>,
-          )}
-        </p>
+        {!noteClosed && (
+          <div className="nav-note">
+            <p>
+              {t.panel.serversNote(
+                <LegalLink page="privacy">{t.settings.privacy}</LegalLink>,
+                <LegalLink page="terms">{t.settings.terms}</LegalLink>,
+              )}
+            </p>
+            <button
+              type="button"
+              className="nav-note-x"
+              aria-label={t.panel.closeNote}
+              title={t.panel.closeNote}
+              onClick={() => {
+                /* The cross leaves the page, so focus goes to the button above it. */
+                nextButton.current?.focus();
+                onCloseNote();
+              }}
+            >
+              <Icon name="close" size={12} />
+            </button>
+          </div>
+        )}
       </footer>
     </section>
   );

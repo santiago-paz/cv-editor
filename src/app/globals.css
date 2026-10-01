@@ -473,7 +473,14 @@ ul { list-style: none; margin: 0; padding: 0; }
 .nav .primary:only-child { justify-content: center; }
 .nav .back { order: -1; padding: 0 12px; }
 .nav .primary.center { justify-content: center; padding: 0 20px; }
-.nav-note { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-3); text-align: center; text-wrap: balance; }
+/* The side padding is as wide as the cross, so the text stays centered under the button. */
+.nav-note { position: relative; padding-inline: 28px; }
+.nav-note p { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-3); text-align: center; text-wrap: balance; }
+.nav-note-x {
+  position: absolute; top: -5px; right: 0; display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0;
+  border-radius: 8px; background: none; color: var(--ink-3); transition: background-color .12s, color .12s;
+}
+.nav-note-x:hover { background: var(--fill); color: var(--ink); }
 .nav-note a, .menu-note a { text-underline-offset: 3px; }
 .nav-note a:hover, .menu-note a:hover { color: var(--ink); }
 

@@ -258,6 +258,8 @@ const en = {
         {terms}
       </>
     ),
+    /** The label of the cross that closes that note. */
+    closeNote: "Close this note",
     /** What each kind of section is for, shown in the "Add a section" menu. */
     hints: {
       experience: "Jobs, with dates and bullets",

@@ -264,6 +264,8 @@ const es: Dict = {
         {terms}
       </>
     ),
+    /** The label of the cross that closes that note. */
+    closeNote: "Cerrar esta nota",
     /** What each kind of section is for, shown in the "Agregar una sección" menu. */
     hints: {
       experience: "Trabajos, con fechas y puntos",

@@ -29,8 +29,8 @@ and for anyone who takes it over. It is a checklist, not legal advice.
 | Name the person responsible, with an address (Ley 25.326, art. 6) | Privacy page, "Who runs this". `src/lib/operator.ts`. The address comes from `OPERATOR_ADDRESS`. |
 | Say what is kept, why, for how long, and who gets it | `src/lib/i18n/legal/`, one file for each language. The English one is the reference, and `src/app/privacy/page.tsx` only shows them. |
 | Print the AAIP notice about access rights | Privacy page, "Your rights" |
-| Tell people before data leaves their browser | The note under the Next button in `Panel.tsx`, and the notes beside the Google buttons in `Account.tsx` and `Improve.tsx` |
-| Consent to processing in the United States | The same notes, and the privacy page |
+| Tell people before data leaves their browser | The note under the Next button in `Panel.tsx`, and the notes beside the Google buttons in `Account.tsx` and `Improve.tsx`. The person can close the Next note with its cross and it stays closed (`serversNote` in `src/lib/ui-prefs.ts`). The PDF menu in `DownloadMenu.tsx` still says that the file way sends the CV to the server. |
+| Consent to processing in the United States | The same notes, and the privacy page. The privacy page and the terms stay one click away in Settings after the Next note is closed. |
 | Keep less | `src/lib/server/auth-hooks.ts` blanks the IP address, the browser string, the Google photo link and Google's tokens |
 | Delete on a schedule | `src/lib/keep.ts` holds the windows. `src/lib/server/retention.ts` deletes, at most once an hour, after a sign-in or an AI rewrite. A quiet site clears its old rows at the next visit. |
 | Delete when asked | Settings, Delete account |

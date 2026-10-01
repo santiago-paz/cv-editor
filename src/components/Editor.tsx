@@ -573,6 +573,8 @@ export default function Editor() {
               pdf={pdf}
               onFocusPath={setFocusPath}
               onNew={newCv}
+              noteClosed={ui.serversNote === "closed"}
+              onCloseNote={() => setPrefs({ serversNote: "closed" })}
               photo={
                 <PhotoPane
                   photo={photo}
