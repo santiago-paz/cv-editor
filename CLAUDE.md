@@ -30,6 +30,23 @@ Rules that keep the preview and the PDF in step:
 - The sample CV is a made-up person on example.com addresses. Never put real
   personal data in it.
 
+Rules that keep search engines and AI tools reading the right thing:
+
+- The editor is the home page and draws in the browser only. Its server HTML
+  carries the title, the description, the structured data and the short text on
+  the loading sheet (`src/lib/pitch.ts`), so a crawler that runs no script still
+  learns what the site is. All of it is English, because the server cannot know
+  the visitor's language. There is no landing page by design: the editor is the
+  page people open.
+- Titles, descriptions, canonical links, social cards and structured data all come
+  from `src/lib/seo.ts`, and `SITE_URL` there is the only place the address is
+  written. The structured data never states a rating, a review or a price the
+  product does not have.
+- A claim in `pitch.ts`, `seo.ts` or `llms.txt` is a fact from the README or the
+  code (the timing, the two PDF ways, what the AI route sends). Change the fact
+  and the words together. `tests/seo.test.ts` holds the lengths a search result
+  keeps, the sitemap, robots.txt, the manifest, the icons and the structured data.
+
 Rules that keep the editor fast and in one style:
 
 - Typing a CV must never need the mouse. A box in the Enter flow carries

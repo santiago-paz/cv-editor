@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { LANG_SCRIPT } from "@/lib/i18n/boot";
+import { HOME, SITE_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const sans = Figtree({ subsets: ["latin", "latin-ext"], variable: "--font-sans", display: "swap" });
@@ -12,10 +13,13 @@ const display = Bricolage_Grotesque({
   display: "swap",
 });
 
+/* What a page says when it says nothing of its own, and the address that every
+   relative link in the metadata is read against. The pages set the rest in
+   src/lib/seo.ts. */
 export const metadata: Metadata = {
-  title: "CV Editor",
-  description:
-    "Write your CV in about a minute. Type a few letters, press Enter, and the page fills in. See where each page breaks, then download the PDF. You do not need an account, and your CVs stay in this browser.",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_NAME,
+  description: HOME.description,
 };
 
 export const viewport: Viewport = {

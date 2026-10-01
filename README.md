@@ -276,6 +276,30 @@ vercel env pull .env.local
 npm run db:migrate
 ```
 
+## Search and sharing
+
+The editor is the home page, and it draws in the browser only, so its server
+HTML would be nearly empty. It carries what a crawler needs anyway: a title and
+a description, a canonical link, social cards, structured data (JSON-LD) that
+says what CV Editor is, and a short text on the loading sheet
+(`src/lib/pitch.ts`). The server cannot know a visitor's language, so all of it
+is English. `src/lib/seo.ts` holds the site's address and builds the rest. A
+fork sets `NEXT_PUBLIC_SITE_URL` to its own address.
+
+The files `robots.txt`, `sitemap.xml`, `manifest.webmanifest`, `llms.txt` and
+the picture a shared link shows (`opengraph-image`) come from `src/app/`. What
+they say comes from this README and the code: the timing above, the two PDF ways
+and what the AI button sends. Change the fact and the words together. The
+structured data states no rating, review or price that the product does not
+have. `tests/seo.test.ts` checks all of this.
+
+After a deploy, open `/sitemap.xml`, `/robots.txt` and `/llms.txt` on the live
+site, and test the home page in Google's Rich Results Test and the URL
+inspection of Search Console. Search Console and Bing Webmaster Tools take the
+sitemap, and Bing's IndexNow tells Bing about a changed page at once. The
+IndexNow key is the name and the text of the one `.txt` file in `public/`. It is
+public by design: it only proves that the site's owner chose it.
+
 ## Privacy, terms and headers
 
 The privacy page and the terms are written for Argentina's data law (Ley 25.326)
@@ -301,8 +325,10 @@ what the AI button may send, how its reply gets cleaned and how its changes are
 marked, what the editor says when the server won't make a PDF, how the print
 dialog opens and cleans up, the four languages (every line translated, no name
 or number dropped, and the privacy and terms pages saying the same things in
-each), and the suggestions: every list, the matching, the dates, the job
-families and the sources each box reads.
+each), what search engines read (the lengths a search result keeps, the
+sitemap, robots.txt, the structured data and the icons), and the suggestions:
+every list, the matching, the dates, the job families and the sources each box
+reads.
 Two of them start Chrome: one prints CVs, reads the text back with `pdftotext`
 and checks that no browser header or footer lands on the page, and one checks
 that the preview's page breaks land where the PDF breaks. Both skip themselves
@@ -343,6 +369,9 @@ npm run typecheck
 | `src/app/api/ai/` | The AI routes: rewrite, accept, usage |
 | `src/app/api/auth/` | Sign-in, handled by Better Auth |
 | `src/app/privacy/`, `src/app/terms/` | The routes of the privacy page and the terms. Their text is in `src/lib/i18n/legal/` |
+| `src/lib/seo.ts`, `src/lib/pitch.ts` | The site's address, the titles and descriptions, the structured data, and the English words that say what the editor is |
+| `src/app/opengraph-image.tsx` | The picture a shared link shows, drawn at build time with the two font files in `src/app/_og/` |
+| `scripts/make-icons.mjs` | Draws the favicon, the Apple icon and the manifest icons from `icon.svg` (`npm run icons`) |
 | `src/components/` | The editor: top bar, panel, stage, menus |
 | `src/components/DownloadMenu.tsx` | The PDF button and the menu that explains its two ways |
 | `src/components/steps/` | One file per kind of step: About you, jobs, skills, languages, summary |
@@ -357,6 +386,8 @@ The CVs are set in PT Sans and PT Serif (Sidebar) and Inter (Classic), all under
 the SIL Open Font License. The license files sit next to the fonts in
 `public/fonts/`. They ship with the app because the server's Chromium has no
 fonts of its own, and a different face would break lines in different places.
+The picture a shared link shows uses the site's own type, Bricolage Grotesque
+and Figtree, from `src/app/_og/`, with their licenses beside them.
 
 ## Contributing
 
