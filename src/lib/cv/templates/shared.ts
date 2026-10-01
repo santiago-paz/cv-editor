@@ -41,7 +41,7 @@ export function projectEntry(item: Project, ctx: RenderContext, path: string): s
   const title = [esc(item.name), ...links].filter(Boolean).join(" ");
   return (
     `<div class="entry"${mark(ctx, path)}>` +
-    (title ? `<div class="project-title">${title}</div>` : "") +
+    (title ? `<div class="project-title"${mark(ctx, `${path}.name`)}>${title}</div>` : "") +
     bulletList(item.bullets, ctx, `${path}.bullets`) +
     `</div>`
   );

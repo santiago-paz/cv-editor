@@ -84,11 +84,12 @@ export function blankCv(locale: Locale, title = "Untitled CV"): Cv {
     accent: DEFAULT_ACCENT,
     showPhoto: true,
     person: { name: "", role: "", location: "", email: "", phone: "" },
-    links: [],
+    // One empty row each, so the first link and the first language are ready to type into.
+    links: [link()],
     summaryTitle: LABELS[locale].profile,
     summary: "",
     skills: [],
-    languages: [],
+    languages: [language()],
     hobbies: "",
     sections: [section("experience", locale), section("education", locale)],
   };

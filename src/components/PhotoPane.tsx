@@ -7,7 +7,8 @@ import { MAX_ZOOM, createStage, render, shrink, type Square, type Stage } from "
 import { Icon } from "./icons";
 
 /* One photo serves every CV. This pane uploads it, places it in the frame
-   the open CV prints, and says what it will print at. */
+   the open CV prints, and says what it will print at. The placing happens in
+   a dialog, so the writing panel stays as it was. */
 
 const PHOTO_PX = 600; // the saved square: 760 dpi in the sidebar's 20 mm circle
 const SOURCE_PX = 1600; // the original is kept this size, so the crop can move later
@@ -109,10 +110,13 @@ export default function PhotoPane({
     return () => window.removeEventListener("beforeunload", warn);
   }, [draft?.changed]);
 
-  useEffect(() => () => {
-    stage.current?.destroy();
-    cancelAnimationFrame(pending.current);
-  }, []);
+  useEffect(
+    () => () => {
+      stage.current?.destroy();
+      cancelAnimationFrame(pending.current);
+    },
+    [],
+  );
 
   function paintReadout() {
     const square = stage.current?.square;
@@ -145,7 +149,6 @@ export default function PhotoPane({
         if (!ready) return;
         ready.load(image, square);
         stageRoot.current?.focus({ preventScroll: true });
-        stageRoot.current?.scrollIntoView({ block: "nearest" });
       }),
     );
   }
@@ -221,7 +224,7 @@ export default function PhotoPane({
   return (
     <section
       className={"photo" + (dropping ? " dropping" : "")}
-      aria-labelledby="photoLabel"
+      aria-label="Photo"
       style={{ ["--shape" as string]: `${round * 100}%` }}
       onDragOver={onDrag}
       onDragLeave={event => {
@@ -233,56 +236,74 @@ export default function PhotoPane({
         void take(event.dataTransfer.files[0]);
       }}
     >
-      <h2 className="pane-label" id="photoLabel">
-        Photo
-      </h2>
-
-      {!draft && (
-        <div className="photo-card">
-          <span className={"photo-thumb" + (photo ? "" : " empty")}>
+      <div className="photo-card">
+        <button
+          type="button"
+          className={"avatar" + (photo ? "" : " empty")}
+          aria-label={photo ? "Adjust your photo" : "Add a photo"}
+          data-field="photo"
+          onClick={() => (photo ? void adjust() : file.current?.click())}
+        >
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={photo.src} alt="" width={64} height={64} />
+          ) : (
+            <Icon name="user" size={26} />
+          )}
+        </button>
+        <div className="photo-about">
+          <p className="photo-title">
+            Photo <span className="tag">Optional</span>
+          </p>
+          <p className="photo-sub">
+            Prints as a {Math.round(frameMm)}&nbsp;mm {shapeName(round)} on {template.name}.{" "}
+            {!photo && "Drop an image here, or pick one. It stays in this browser."}
+            {reach && ` ${reach}`}
+          </p>
+          <div className="photo-buttons">
             {photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photo.src} alt="Your photo" width={64} height={64} data-field="photo" />
-            ) : (
-              <svg viewBox="0 0 26 26" aria-hidden="true">
-                <circle cx="13" cy="10" r="4.5" />
-                <path d="M5 22c1.2-4.2 4.4-6.5 8-6.5s6.8 2.3 8 6.5" />
-              </svg>
-            )}
-          </span>
-          <div className="photo-about">
-            <p className="photo-fit">
-              {Math.round(frameMm)} mm {shapeName(round)} on {template.name}
-            </p>
-            {photo && (
-              <label className="switch">
-                <input type="checkbox" checked={shown} onChange={event => onShown(event.target.checked)} />
-                Print it on this CV
-              </label>
-            )}
-            {reach && <p className="hint" style={{ margin: 0 }}>{reach}</p>}
-            <div className="photo-buttons">
-              {photo && (
-                <button type="button" className="tog" onClick={() => void adjust()}>
+              <>
+                <button type="button" className="chip-button" onClick={() => void adjust()}>
                   Adjust
                 </button>
-              )}
-              <button type="button" className="tog" onClick={() => file.current?.click()} data-field={photo ? undefined : "photo"}>
-                {photo ? "Upload new" : "Upload a photo"}
-              </button>
-              {photo && (
-                <button type="button" className="tog" onClick={onRemove}>
+                <button type="button" className="chip-button" onClick={() => file.current?.click()}>
+                  Upload new
+                </button>
+                <button type="button" className="chip-button danger" onClick={onRemove}>
                   Remove
                 </button>
-              )}
-            </div>
-            {!photo && <p className="hint" style={{ margin: 0 }}>Or drop an image here. It is saved in this browser.</p>}
+              </>
+            ) : (
+              <button type="button" className="chip-button" onClick={() => file.current?.click()}>
+                <Icon name="image" size={14} />
+                Upload a photo
+              </button>
+            )}
           </div>
+          {photo && (
+            <label className="switch">
+              <input type="checkbox" checked={shown} onChange={event => onShown(event.target.checked)} />
+              <span>Print it on this CV</span>
+            </label>
+          )}
         </div>
-      )}
+      </div>
 
       {draft && (
-        <div className="photo-editor">
+        <dialog
+          className="dialog photo-dialog"
+          aria-labelledby="photo-dialog-title"
+          ref={node => {
+            if (node && !node.open) node.showModal();
+          }}
+          onCancel={event => {
+            event.preventDefault();
+            stop();
+          }}
+        >
+          <h2 className="dialog-title" id="photo-dialog-title">
+            Place your photo
+          </h2>
           <div
             className="crop-stage"
             ref={stageRoot}
@@ -320,33 +341,34 @@ export default function PhotoPane({
           </div>
           <div className={"photo-res " + level}>
             <span>
-              {Math.round(frameMm)} mm {shapeName(round)}
+              {Math.round(frameMm)}&nbsp;mm {shapeName(round)}
             </span>
             <span aria-hidden="true">·</span>
             <b>
-              {readout.dpi} dpi
-              {level === "warn" ? " · may print soft" : level === "bad" ? " · will print soft" : ""}
+              {readout.dpi}&nbsp;dpi
+              {level === "warn" ? ", may print soft" : level === "bad" ? ", will print soft" : ""}
             </b>
-            <button type="button" className="tog" onClick={() => stage.current?.reset()}>
+            <button type="button" className="text-button" onClick={() => stage.current?.reset()}>
               Reset
             </button>
           </div>
-          <p className="hint" id="cropHint">
+          <p className="field-hint" id="cropHint">
             Drag to move the photo, or double-click a spot to center it. Scroll or pinch to zoom. On the keyboard, the
             arrow keys move it and + and - zoom.
           </p>
-          <div className="photo-actions">
-            <button type="button" className="tog first" onClick={() => file.current?.click()}>
+          <div className="dialog-actions">
+            <button type="button" className="btn quiet" onClick={() => file.current?.click()}>
               Upload new
             </button>
-            <button type="button" className="tog" onClick={stop}>
+            <span className="grow" />
+            <button type="button" className="btn secondary" onClick={stop}>
               Cancel
             </button>
-            <button type="button" className="save" disabled={!draft.changed} onClick={save}>
+            <button type="button" className="btn primary" disabled={!draft.changed} onClick={save}>
               Save photo
             </button>
           </div>
-        </div>
+        </dialog>
       )}
 
       <input

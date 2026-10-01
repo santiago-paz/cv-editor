@@ -237,12 +237,19 @@ li { margin-bottom: 1pt; }
 `;
 
 function roleEntry(item: Role, ctx: RenderContext, path: string): string {
-  const note = item.note.trim() ? ` <span class="note">${esc(item.note.trim())}</span>` : "";
-  const title = item.title.trim() ? `<span class="role">${esc(item.title.trim())}${note}</span>` : "";
+  /* The marks below are drawn in the preview only. They let a click on the
+     company, the title or the dates open that box, and let the box that has
+     focus light its own words on the sheet. */
+  const note = item.note.trim() ? ` <span class="note"${mark(ctx, `${path}.note`)}>${esc(item.note.trim())}</span>` : "";
+  const title = item.title.trim()
+    ? `<span class="role"${mark(ctx, `${path}.title`)}>${esc(item.title.trim())}${note}</span>`
+    : "";
   const orgText = item.org.trim();
-  const org = orgText ? `<span class="org">${anchor(orgText, webUrl(item.url))}</span>` : "";
+  const org = orgText ? `<span class="org"${mark(ctx, `${path}.org`)}>${anchor(orgText, webUrl(item.url))}</span>` : "";
   const head = [title, org].filter(Boolean).join(", ") || (note ? `<span class="role">${note}</span>` : "");
-  const date = item.dates.trim() ? `\n<span class="date">${esc(item.dates.trim())}</span>` : "";
+  const date = item.dates.trim()
+    ? `\n<span class="date"${mark(ctx, `${path}.dates`)}>${esc(item.dates.trim())}</span>`
+    : "";
   return (
     `<div class="entry"${mark(ctx, path)}>` +
     (head || date ? `<div class="entry-head">${head}${date}</div>` : "") +

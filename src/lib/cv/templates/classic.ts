@@ -133,19 +133,25 @@ li { margin-bottom: 1pt; }
 `;
 
 function roleEntry(item: Role, ctx: RenderContext, path: string): string {
-  const note = item.note.trim() ? ` <span class="note">${esc(item.note.trim())}</span>` : "";
+  /* The marks below are drawn in the preview only. They let a click on the
+     company, the title or the dates open that box, and let the box that has
+     focus light its own words on the sheet. */
+  const note = item.note.trim() ? ` <span class="note"${mark(ctx, `${path}.note`)}>${esc(item.note.trim())}</span>` : "";
   const title = item.title.trim();
   const orgText = item.org.trim();
-  const dates = item.dates.trim() ? `<span class="date">${esc(item.dates.trim())}</span>` : "";
+  const dates = item.dates.trim()
+    ? `<span class="date"${mark(ctx, `${path}.dates`)}>${esc(item.dates.trim())}</span>`
+    : "";
 
   /* The employer leads, with the role under it. Without an employer, the
      role takes its place on the first line. */
   const lead = orgText
-    ? `<span class="org">${anchor(orgText, webUrl(item.url))}</span>`
+    ? `<span class="org"${mark(ctx, `${path}.org`)}>${anchor(orgText, webUrl(item.url))}</span>`
     : title || note
-      ? `<span class="org">${esc(title)}${note}</span>`
+      ? `<span class="org"${mark(ctx, `${path}.title`)}>${esc(title)}${note}</span>`
       : "";
-  const second = orgText && (title || note) ? `<div class="role">${esc(title)}${note}</div>` : "";
+  const second =
+    orgText && (title || note) ? `<div class="role"${mark(ctx, `${path}.title`)}>${esc(title)}${note}</div>` : "";
 
   return (
     `<div class="entry"${mark(ctx, path)}>` +

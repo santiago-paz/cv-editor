@@ -23,6 +23,20 @@ Rules that keep the preview and the PDF in step:
 - The sample CV is a made-up person on example.com addresses. Never put real
   personal data in it.
 
+Rules that keep the editor fast and in one style:
+
+- Typing a CV must never need the mouse. A box in the Enter flow carries
+  `data-flow` (`Combo` and `RichField` add it), and a row that Enter adds is
+  drawn first and then focused with `changeThenFocus`. Side buttons, such as
+  the AI button, stay out of the flow. `npm run speedrun` types a whole CV with
+  real key presses and times it, so run it after a change to the flow.
+- Suggestions come from the plain lists in `src/lib/suggest/data/`.
+  `tests/suggest-data.test.ts` checks their format. A new job family needs its
+  words, skills and bullets in English, Spanish and German.
+- Colors, type and the marker come from the tokens at the top of
+  `src/app/globals.css`, defined once for light and dark with `light-dark()`.
+  Use a token, not a new hex value.
+
 Rules the privacy page promises, so the code must keep them:
 
 - CVs never live on the server. The PDF route and the AI route read what they

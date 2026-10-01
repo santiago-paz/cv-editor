@@ -6,13 +6,17 @@ import type { Template } from "@/lib/cv/templates";
 import { measureFlow } from "@/lib/measure";
 import { paginate, type Pagination } from "@/lib/paginate";
 
-/* The proof: the CV set in an iframe with its own stylesheet, on a sheet the
+/* The stage: the CV set in an iframe with its own stylesheet, on a sheet the
    width of A4, with the page cuts drawn where Chrome will break the pages.
 
    CSS millimetres are exact (1mm = 96/25.4 px), so the sheet is real size at
    100% and the fit zoom only scales it down. The iframe is sandboxed without
    scripts and takes no pointer events: clicks land on the sheet around it,
-   which looks up what was clicked and opens its field. */
+   which looks up what was clicked and opens its field.
+
+   The other way round, the box that has focus in the writing panel is marked
+   on the sheet with a highlighter stroke, line by line, and the sheet scrolls
+   to keep it in view. So what you type always shows where it lands. */
 
 export const PX_PER_MM = 96 / 25.4;
 const SHEET_MM = 210;
@@ -41,18 +45,70 @@ interface Box {
 }
 
 /** True when an element's text is light. It then sits on a dark band, where
-    the pick outline has to be light to show. */
+    the marker has to be light to show. */
 function onDark(element: Element): boolean {
   const color = element.ownerDocument.defaultView?.getComputedStyle(element).color ?? "";
   const [r = 0, g = 0, b = 0] = color.match(/[\d.]+/g)?.map(Number) ?? [];
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 150;
 }
 
-export default function Proof({
+const quote = (value: string) => value.replace(/["\\]/g, "\\$&");
+
+/** The printed element for a field path, or the nearest one above it: a job's
+    empty title is not printed, so its job is marked instead. */
+function printedFor(doc: Document, path: string): HTMLElement | null {
+  const parts = path.split(".");
+  while (parts.length) {
+    const found = doc.querySelector<HTMLElement>(`[data-edit="${quote(parts.join("."))}"]`);
+    if (found) return found;
+    parts.pop();
+  }
+  return null;
+}
+
+/** One box per printed line of the element's text, so the marker lies on the
+    words like a highlighter and not over the whole block. An element with no
+    text, such as the photo, is marked as a whole. */
+function lineBoxes(element: HTMLElement): Box[] {
+  const doc = element.ownerDocument;
+  const rects: DOMRect[] = [];
+  const walker = doc.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!node.textContent?.trim()) continue;
+    const range = doc.createRange();
+    range.selectNodeContents(node);
+    for (const rect of Array.from(range.getClientRects())) if (rect.width > 1 && rect.height > 1) rects.push(rect);
+  }
+  if (!rects.length) {
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 1) return [];
+    // A block with nothing in it yet, such as a new job: a short bar where its first line will go.
+    if (rect.height < 4) return [{ top: rect.top - 1, left: rect.left, width: Math.min(rect.width, 160), height: 3 }];
+    return [{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }];
+  }
+  rects.sort((a, b) => a.top - b.top || a.left - b.left);
+  const lines: Box[] = [];
+  for (const rect of rects) {
+    const last = lines[lines.length - 1];
+    if (last && Math.abs(rect.top - last.top) < Math.min(rect.height, last.height) * 0.6) {
+      const right = Math.max(last.left + last.width, rect.right);
+      const bottom = Math.max(last.top + last.height, rect.bottom);
+      last.left = Math.min(last.left, rect.left);
+      last.width = right - last.left;
+      last.top = Math.min(last.top, rect.top);
+      last.height = bottom - last.top;
+    } else lines.push({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
+  }
+  return lines;
+}
+
+export default function Stage({
   rendered,
   template,
   zoom,
   photoOverride,
+  focusPath,
+  example,
   onMeasure,
   onPick,
 }: {
@@ -60,11 +116,15 @@ export default function Proof({
   template: Template;
   zoom: "fit" | "actual";
   photoOverride: string | null;
+  /** The field that has focus in the writing panel. */
+  focusPath: string | null;
+  /** The sheet shows an example, not the person's own CV: no click to edit. */
+  example: boolean;
   onMeasure: (measure: Measure) => void;
   onPick: (path: string) => void;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
-  const stage = useRef<HTMLElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
   const painted = useRef({ css: "", body: "", lang: "" });
   const [loaded, setLoaded] = useState(false);
   const [height, setHeight] = useState(PAGE_MM * PX_PER_MM);
@@ -72,6 +132,7 @@ export default function Proof({
   const [flags, setFlags] = useState<(Box & { title: string })[]>([]);
   const [scale, setScale] = useState(1);
   const [hover, setHover] = useState<(Box & { dark: boolean }) | null>(null);
+  const [marks, setMarks] = useState<{ boxes: Box[]; dark: boolean; key: number }>({ boxes: [], dark: false, key: 0 });
 
   const margin = {
     top: template.margin.top * PX_PER_MM,
@@ -85,10 +146,45 @@ export default function Proof({
 
   const onMeasureRef = useRef(onMeasure);
   const templateRef = useRef(template);
+  const pathRef = useRef(focusPath);
+  const marginRef = useRef(margin);
   useLayoutEffect(() => {
     onMeasureRef.current = onMeasure;
     templateRef.current = template;
+    pathRef.current = focusPath;
+    marginRef.current = margin;
   });
+
+  /* Marks the printed line of the box that has focus. */
+  const light = useCallback((reveal: boolean) => {
+    const doc = frame.current?.contentDocument;
+    const path = pathRef.current;
+    if (!doc?.body || !path) {
+      setMarks(current => (current.boxes.length ? { boxes: [], dark: false, key: current.key } : current));
+      return;
+    }
+    const element = printedFor(doc, path);
+    if (!element) {
+      setMarks(current => (current.boxes.length ? { boxes: [], dark: false, key: current.key } : current));
+      return;
+    }
+    const at = marginRef.current;
+    const boxes = lineBoxes(element).map(box => ({
+      top: at.top + box.top,
+      left: at.left + box.left,
+      width: box.width,
+      height: box.height,
+    }));
+    setMarks(current => ({ boxes, dark: onDark(element), key: reveal ? current.key + 1 : current.key }));
+    if (reveal) {
+      requestAnimationFrame(() =>
+        stage.current?.querySelector<HTMLElement>(".lit")?.scrollIntoView({
+          block: "nearest",
+          behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        }),
+      );
+    }
+  }, []);
 
   const measure = useCallback(() => {
     const element = frame.current;
@@ -109,9 +205,7 @@ export default function Proof({
 
     /* The galley runs to the foot of the last page, so the space left on it
        shows. */
-    const galley = tpl.flow
-      ? flow.start + layout.count * flow.page + flow.padBottom
-      : layout.count * flow.page;
+    const galley = tpl.flow ? flow.start + layout.count * flow.page + flow.padBottom : layout.count * flow.page;
     const total = Math.max(flow.content, galley);
     element.style.height = total + "px";
     setHeight(total);
@@ -141,10 +235,10 @@ export default function Proof({
       ...layout,
       worstDead: Math.max(0, ...layout.cuts.map(cut => cut.dead)) / PX_PER_MM,
       stranded: layout.cuts.some(cut => flow.blocks[cut.last]?.heading),
-      summaryLines:
-        summary && lineHeight ? Math.round(summary.getBoundingClientRect().height / lineHeight) : null,
+      summaryLines: summary && lineHeight ? Math.round(summary.getBoundingClientRect().height / lineHeight) : null,
     });
-  }, []);
+    light(false);
+  }, [light]);
 
   const applyPhoto = useCallback(() => {
     const doc = frame.current?.contentDocument;
@@ -186,6 +280,13 @@ export default function Proof({
     return () => doc.fonts.removeEventListener("loadingdone", again);
   }, [loaded, measure]);
 
+  /* The marker moves when the focus does, and the sheet scrolls to it. */
+  useEffect(() => {
+    if (!loaded) return;
+    const frameId = requestAnimationFrame(() => light(true));
+    return () => cancelAnimationFrame(frameId);
+  }, [focusPath, loaded, light]);
+
   useLayoutEffect(() => {
     const element = stage.current;
     if (!element) return;
@@ -205,7 +306,7 @@ export default function Proof({
   function target(event: MouseEvent): { path: string; box: Box & { dark: boolean } } | null {
     const element = frame.current;
     const doc = element?.contentDocument;
-    if (!element || !doc) return null;
+    if (!element || !doc || example) return null;
     const r = element.getBoundingClientRect();
     const x = (event.clientX - r.left) / scale;
     const y = (event.clientY - r.top) / scale;
@@ -229,12 +330,12 @@ export default function Proof({
   }
 
   return (
-    <main className="stage" ref={stage} id="preview" aria-label="Preview" tabIndex={-1}>
+    <div className="stage" ref={stage} id="preview" role="region" aria-label="Preview of your CV" tabIndex={-1}>
       <div className="stage-inner">
         <div style={{ width: sheetWidth * scale, height: sheetHeight * scale }}>
           <div className="zoomer" style={{ width: sheetWidth, transform: `scale(${scale})`, transformOrigin: "0 0" }}>
             <div
-              className="sheet-wrap"
+              className={"sheet-wrap" + (example ? " example" : "")}
               style={{ cursor: hover ? "pointer" : "default" }}
               onMouseMove={event => setHover(target(event)?.box ?? null)}
               onMouseLeave={() => setHover(null)}
@@ -260,30 +361,47 @@ export default function Proof({
                   style={{ width: innerWidth, height, pointerEvents: "none" }}
                 />
               </div>
-              {cuts.map((top, index) => (
-                <div key={index} className="cut" style={{ top }}>
-                  <span>cut · page {index + 2} starts</span>
-                </div>
-              ))}
-              {flags.map((flag, index) => (
-                <div
-                  key={index}
-                  className="orphan-flag"
-                  title={flag.title}
-                  style={{ top: flag.top, height: flag.height }}
-                />
-              ))}
-              {hover && (
+              {!example &&
+                cuts.map((top, index) => (
+                  <div key={index} className="cut" style={{ top }}>
+                    <span>Page {index + 2} starts here</span>
+                  </div>
+                ))}
+              {!example &&
+                flags.map((flag, index) => (
+                  <div
+                    key={index}
+                    className="orphan-flag"
+                    title={flag.title}
+                    style={{ top: flag.top, height: flag.height }}
+                  />
+                ))}
+              {!example && hover && (
                 <div
                   className={"pick" + (hover.dark ? " on-dark" : "")}
                   aria-hidden="true"
                   style={{ top: hover.top - 2, left: hover.left - 3, width: hover.width + 6, height: hover.height + 4 }}
                 />
               )}
+              {!example &&
+                marks.boxes.map((box, index) => (
+                  <div
+                    key={`${marks.key}-${index}`}
+                    className={"lit" + (marks.dark ? " on-dark" : "")}
+                    aria-hidden="true"
+                    style={{
+                      top: box.top - 1,
+                      left: box.left - 3,
+                      width: box.width + 6,
+                      height: box.height + 2,
+                      animationDelay: `${Math.min(index, 6) * 35}ms`,
+                    }}
+                  />
+                ))}
             </div>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

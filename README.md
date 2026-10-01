@@ -6,32 +6,80 @@ free Google account adds one thing: a button that rewrites a block with AI.
 
 Live at https://cv-editor-ruby.vercel.app. Every push to `main` deploys there.
 
+You type a few letters in a box and press Enter. The best match fills in and
+the next box opens, so a whole CV takes about a minute. On a test CV (two jobs,
+a degree, eight skills, three languages and a summary), a fast typist needs 42
+seconds when they take the suggested bullets, and 58 when they type every
+bullet. The typist here writes seven characters a second. `npm run speedrun`
+repeats the measurement.
+
 The preview uses the same HTML and fonts as the PDF, so its page count matches
 the file you download. Dashed cut lines show where each new page starts, and a
-gauge at the foot of the screen says how full the last page is.
+pill at the foot of the preview says how full the last page is.
 
 ## What it does
 
+- Suggestions in every box, in the language of the CV: job titles, companies,
+  schools, degrees, cities, skills, languages, levels, dates, email domains,
+  links and whole bullets for the job you named. The skills and bullets follow
+  the kind of job. Text you wrote in your other CVs comes first.
+- Six steps, one box at a time: About you, Experience, Education, Skills,
+  Languages and Summary. A plus button adds sections such as Projects, Awards
+  or a free paragraph.
+- A highlighter on the preview marks the line of the box you are typing in, and
+  the sheet scrolls to keep it in view. Click any line to jump to its box.
 - Two templates. Sidebar fits one page, with a colored rail for contact
   details, skills and languages. Classic is one column, up to two pages, and
   suits job portals that copy a CV into their own form fields.
-- Page gauges: page count, how full the last page is, and how much paper is
-  left empty when an entry moves to the next page. The editor also flags a
-  heading left alone at the foot of a page.
-- Click any line in the preview to jump to its field.
+- A page pill with the page count, how full the last page is, and how much
+  paper is left empty when an entry moves to the next page. The editor also
+  flags a heading left alone at the foot of a page.
 - A photo you can crop by dragging and zooming, with the print resolution shown
   as you go. Every CV uses the same photo, and each one can leave it out.
-- Seven rail colors or any hex value, with a contrast check.
-- Headings in English, Spanish or German.
-- As many CVs as you like: duplicate one for each job, and back them all up to
-  a JSON file you can restore in any browser.
-- One Settings button holds the rest: the theme, the zoom, backups, and a
-  switch that forgets your CVs when you close the tab. That switch is for a
-  shared computer. The CVs and photo then live in the tab's sessionStorage.
-- The button at the left of the header folds the CV list away, to give the
-  preview more room. The editor remembers it for next time.
+- The Style menu holds the layout, seven rail colors or any hex value (with a
+  contrast check), and the CV's language: English, Spanish or German.
+- As many CVs as you like, in the list behind the CV's name at the top:
+  duplicate one for each job, and back them all up to a JSON file you can
+  restore in any browser.
+- Settings holds the theme, the zoom, backups, a switch that forgets your CVs
+  when you close the tab, and the account. That switch is for a shared
+  computer. The CVs and photo then live in the tab's sessionStorage.
 - Bold, italics and links in the summary and bullets. Pasted text arrives as
   plain text.
+- Light and dark themes, and a layout that works on a phone.
+
+## Typing a CV
+
+| Key | What it does |
+| --- | --- |
+| Enter | Takes the lit suggestion and moves to the next box. With nothing lit, it keeps what you typed. |
+| Tab | Takes the lit suggestion and moves on the normal way. |
+| Right arrow | Takes the lit suggestion and stays in the box, to keep typing. |
+| Up, down | Move through the suggestions. |
+| Esc | Puts the list away. |
+| Cmd or Ctrl + Enter | Goes to the next step. |
+| Alt + arrows | Moves a bullet up or down, or a skill along its row. |
+| Cmd or Ctrl + B, I, K | Bold, italics, link. |
+
+A blank CV opens with the caret in the name box on a desktop screen, so the
+first key already types. Enter on an empty bullet leaves the list. Enter on the
+last box of a step opens the next step. Dates take a short form: `3/22 -` becomes `Mar 2022 - Present`,
+and `2019 2022` becomes `2019 - 2022`.
+
+## Where the suggestions come from
+
+The lists are plain text in `src/lib/suggest/data/`, one file per kind and
+language. A line is `Display|alias|alias`: the first part goes into the CV, and
+the aliases only help matching, so `ts` finds `TypeScript|TS`. A `*` after a job
+title lets it take Senior, Junior or Lead. In Spanish and German a mark such as
+`[o|a]` writes both forms of a title. The job families (`families.*.ts`) tie a
+kind of job to the words that find it, the skills it lists and the bullets it
+suggests.
+
+Matching ignores case and accents, takes the letters in any order, and knows
+initials. `tests/suggest-data.test.ts` checks every list, so a new entry that
+breaks a rule fails the test. `src/lib/suggest/catalog.ts` builds the indexes the
+first time a language is used.
 
 ## How the PDF is made
 
@@ -88,7 +136,7 @@ in this repo, so another host needs its own limit.
 
 ## Donate link and credit
 
-The CV list ends with a "Made by" line and a Donate link. The first PDF of
+The CV menu ends with a "Made by" line and a Donate link. The first PDF of
 each visit also shows a short note with a Donate button. Donate goes to the
 PayPal.me link in `src/lib/site.ts`. Two environment variables can change
 where the links point:
@@ -105,12 +153,16 @@ Vercel, deploy again.
 ## Accounts and AI
 
 "Improve with AI" sits under each job, project, bullet list, paragraph and
-the summary. It sends that block's text, the title above it, the job's dates
-and the CV's language to Claude Haiku 4.5, and shows the rewrite next to the
-original. Nothing changes until you use a suggestion, and each one can be put
-back.
+the summary, once there is text to improve. It sends that block's text, the
+title above it, the job's dates and the CV's language to Claude Haiku 4.5, and
+shows each rewrite under the line it would replace, with the new words marked.
+Nothing changes until you use a suggestion, and each one can be put back.
+The button is not part of the Enter flow, so typing stays as fast as before.
 
-The button needs an account, and sign-in is Google only (Better Auth). Each
+The button needs an account, and sign-in is Google only (Better Auth). Signed
+out, the button explains that and offers the Google button. Settings shows who
+is signed in and how many rewrites are left, with Sign out and Delete account.
+The account code loads the first time Settings or the button needs it. Each
 account gets 10 rewrites a day and 30 a month. The whole site stops for the
 day once it has spent about 65 cents, which keeps a month under $20. Set
 `AI_PAUSED=1` to turn the button off.
@@ -150,8 +202,10 @@ npm test
 
 The tests cover the sanitizer (browser and server must agree), the templates'
 escaping, the checks that repair an imported backup, storage, the page math,
-what the AI button may send and how its reply gets cleaned, and what the
-editor says when the server won't make a PDF.
+what the AI button may send, how its reply gets cleaned and how its changes are
+marked, what the editor says when the server won't make a PDF, and the
+suggestions: every list, the matching, the dates, the job families and the
+sources each box reads.
 Two of them start Chrome: one prints CVs and reads the text back with
 `pdftotext`, and one checks that the preview's page breaks land where the PDF
 breaks. Both skip themselves when Chrome is missing, and the text checks need
@@ -175,13 +229,19 @@ npm run typecheck
 | `src/lib/measure.ts` | Reads the preview's layout for that math |
 | `src/lib/storage.ts` | localStorage, the tab that forgets its CVs, and backups |
 | `src/lib/site.ts` | The Donate and author links |
+| `src/lib/suggest/` | The suggestion engine: ranking, dates, history, the catalogs and what each box reads |
+| `src/lib/suggest/data/` | The lists: titles, skills, degrees, companies, schools, cities and the job families |
 | `src/lib/ai.ts` | What the AI button sends and gets back, and its limits |
+| `src/lib/ai-diff.ts` | Marks the words an AI suggestion changed |
+| `src/lib/sign-in.ts` | The browser's side of Google sign-in |
 | `src/lib/server/` | Chrome, the PDF and its metadata, the server's sanitizer, sign-in, the database, the model call and its usage counts |
 | `src/app/api/pdf/route.ts` | The PDF route |
 | `src/app/api/ai/` | The AI routes: rewrite, accept, usage |
 | `src/app/api/auth/` | Sign-in, handled by Better Auth |
 | `src/app/privacy/`, `src/app/terms/` | The privacy page and the terms |
-| `src/components/` | The editor |
+| `src/components/` | The editor: top bar, panel, stage, menus |
+| `src/components/steps/` | One file per kind of step: About you, jobs, skills, languages, summary |
+| `src/components/ui/` | The boxes that suggest, the suggestion list, chips, popovers and the Enter flow |
 | `scripts/migrate.mjs` | Creates the database tables |
 | `public/fonts/` | PT Sans, PT Serif and Inter, copied from `@fontsource` by `npm run fonts` |
 

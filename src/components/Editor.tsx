@@ -2,7 +2,9 @@
 
 import { produce } from "immer";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { blankCv, copyTitle, duplicate } from "@/lib/cv/defaults";
+import { flushSync } from "react-dom";
+import { cvLabel, exampleFor, isBlank } from "@/lib/cv/blank";
+import { DEFAULT_ACCENT, blankCv, copyTitle, duplicate } from "@/lib/cv/defaults";
 import { guessLocale } from "@/lib/cv/labels";
 import { fileName, renderCv } from "@/lib/cv/render";
 import { sampleCv } from "@/lib/cv/sample";
@@ -11,7 +13,11 @@ import { TEMPLATES } from "@/lib/cv/templates";
 import type { Cv, Photo } from "@/lib/cv/types";
 import { fetchPdf, printCv, saveBlob } from "@/lib/download";
 import { sanitize } from "@/lib/sanitize";
+import { returnedFromSignIn, whoIsSignedIn } from "@/lib/sign-in";
 import { DONATE_URL } from "@/lib/site";
+import { catalogOf } from "@/lib/suggest/catalog";
+import { historyOf } from "@/lib/suggest/history";
+import { makeSuggesters } from "@/lib/suggest/sources";
 import {
   backup,
   isTabOnly,
@@ -28,31 +34,22 @@ import {
   watch,
   type Ui,
 } from "@/lib/storage";
-import DesignTab from "./DesignTab";
-import DetailsTab from "./DetailsTab";
-import { Icon, Mark } from "./icons";
-import Library from "./Library";
+import { Icon } from "./icons";
+import Panel, { stepForPath, stepsOf, type StepId } from "./Panel";
 import PhotoPane from "./PhotoPane";
-import Proof, { type Measure } from "./Proof";
 import RichToolbar from "./RichToolbar";
-import SectionsTab from "./SectionsTab";
-import Settings from "./Settings";
+import SheetMeter from "./SheetMeter";
+import Stage, { type Measure } from "./Stage";
+import { SuggestProvider } from "./suggest-context";
 import { Toast, useToast } from "./Toast";
+import TopBar from "./TopBar";
+import { flash } from "./ui/util";
 
-type Tab = "details" | "sections" | "design";
 type SaveState = { ok: true } | { ok: false; reason: "full" | "unavailable" };
-
-const TABS: { id: Tab; name: string }[] = [
-  { id: "details", name: "Details" },
-  { id: "sections", name: "Sections" },
-  { id: "design", name: "Design" },
-];
 
 /* A transparent pixel holds the photo's place while one is being placed on a
    CV that has none yet, so the proof has an image to show it in. */
 const NO_PHOTO = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-
-const TIME = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 const newest = (list: Cv[]) => [...list].sort((a, b) => b.updatedAt - a.updatedAt)[0];
 
@@ -63,8 +60,9 @@ function start() {
   const tabOnly = isTabOnly();
   const available = storageAvailable();
   const stored = available ? loadCvs() : null;
-  /* First visit: the sample. A list emptied on purpose stays empty. */
-  const cvs = stored ?? [sampleCv()];
+  /* First visit: a blank CV, with an example on the sheet until the first
+     keystroke. A list emptied on purpose stays empty. */
+  const cvs = stored ?? [blankCv(guessLocale(navigator.language))];
   const ui: Ui = available ? loadUi() : {};
   const first = cvs.find(cv => cv.id === ui.openId) ?? newest(cvs);
   return {
@@ -75,7 +73,6 @@ function start() {
     photo: available ? loadPhoto() : null,
     ui,
     openId: first?.id ?? null,
-    open: first?.sections[0] ? { [first.sections[0].id]: true } : {},
   };
 }
 
@@ -84,15 +81,14 @@ export default function Editor() {
   const [cvs, setCvs] = useState<Cv[]>(boot.cvs);
   const [openId, setOpenId] = useState<string | null>(boot.openId);
   const [photo, setPhoto] = useState<Photo | null>(boot.photo);
-  const [tab, setTab] = useState<Tab>("details");
+  const [step, setStep] = useState<StepId>("you");
   const [view, setView] = useState<"edit" | "preview">("edit");
   const [ui, setUi] = useState<Ui>(boot.ui);
   const [saved, setSaved] = useState<SaveState>(boot.available ? { ok: true } : { ok: false, reason: "unavailable" });
   const [measure, setMeasure] = useState<Measure | null>(null);
   const [placing, setPlacing] = useState<string | null>(null);
-  const [open, setOpen] = useState<Record<string, boolean>>(boot.open);
+  const [focusPath, setFocusPath] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
   const [tabOnly, setTabOnly] = useState(boot.tabOnly);
   const toast = useToast();
   /* The first PDF of a visit mentions donations. Later ones do not. */
@@ -151,6 +147,15 @@ export default function Editor() {
     return () => window.removeEventListener("pagehide", onHide);
   }, [flush]);
 
+  /* Storage that refused the CVs means closing the tab loses them. */
+  const unsaved = !saved.ok && cvs.some(item => !isBlank(item));
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
+
   const setPrefs = useCallback((change: Partial<Ui>) => {
     setUi(current => ({ ...current, ...change }));
     saveUi(change);
@@ -167,19 +172,18 @@ export default function Editor() {
     else delete root.dataset.theme;
   }, [ui.theme]);
 
-  /* The folded CV list is drawn from the root, like the theme, so the page
-     that loads before the editor folds it too. */
-  const listShown = ui.library !== "collapsed";
+  /* The desk behind the sheet and the layout thumbnails take the CV's color.
+     It sits on the root, because menus are drawn in the page body. */
+  const accent = cvs.find(item => item.id === openId)?.accent ?? DEFAULT_ACCENT;
   useEffect(() => {
-    const root = document.documentElement;
-    if (listShown) delete root.dataset.library;
-    else root.dataset.library = "collapsed";
-  }, [listShown]);
+    document.documentElement.style.setProperty("--cv-accent", accent);
+  }, [accent]);
 
   /* ------------------------------------------------------------ the CV */
 
   const cv = cvs.find(item => item.id === openId) ?? null;
   const template = TEMPLATES[cv?.template ?? "sidebar"];
+  const locale = cv?.locale ?? "en";
 
   const update = useCallback((recipe: (draft: Cv) => void) => {
     setCvs(list =>
@@ -195,11 +199,28 @@ export default function Editor() {
     );
   }, []);
 
+  /* A CV nobody has typed into shows an example on the sheet. */
+  const example = !!cv && isBlank(cv) && !placing;
+
   const rendered = useMemo(() => {
     if (!cv) return null;
+    if (example) return renderCv({ ...exampleFor(cv), showPhoto: false }, { photo: null, annotate: true });
     const printed = placing ? photo?.src || NO_PHOTO : (photo?.src ?? null);
     return renderCv(cv, { photo: printed, annotate: true });
-  }, [cv, photo, placing]);
+  }, [cv, photo, placing, example]);
+
+  /* What each box suggests: the built in lists in the CV's language, led by
+     what the person wrote in their other CVs. */
+  const history = historyOf(cvs, openId);
+  const role = cv?.person.role ?? "";
+  const suggesters = useMemo(() => makeSuggesters({ locale, history, role }), [locale, history, role]);
+
+  /* The lists are built the first time a box asks. Doing it once the editor
+     is on screen keeps the first keystroke quick. */
+  useEffect(() => {
+    const timer = window.setTimeout(() => catalogOf(locale), 400);
+    return () => window.clearTimeout(timer);
+  }, [locale]);
 
   const { show } = toast;
   const say = useCallback(
@@ -207,7 +228,31 @@ export default function Editor() {
     [show],
   );
 
+  /* A blank CV on a desktop screen starts with the caret in the name box, so the
+     first key already types. On a phone it waits, since that would raise the
+     keyboard over the page. */
+  useEffect(() => {
+    if (!cvsRef.current.some(item => item.id === openRef.current && isBlank(item))) return;
+    if (!matchMedia("(pointer: fine) and (min-width: 901px)").matches) return;
+    focusName();
+  }, []);
+
+  /* Google sends the person back to this page. Say that it worked. */
+  useEffect(() => {
+    if (!returnedFromSignIn()) return;
+    void whoIsSignedIn()
+      .then(({ user }) => {
+        if (user) show(`Signed in as ${user.email}. Press Improve with AI to try it.`);
+      })
+      .catch(() => undefined);
+  }, [show]);
+
   /* ------------------------------------------------------------ library */
+
+  /* Puts the caret in the first box of the first step. */
+  function focusName() {
+    document.querySelector<HTMLInputElement>('[data-field="person.name"]')?.focus();
+  }
 
   function openCv(id: string) {
     setView("edit");
@@ -216,24 +261,20 @@ export default function Editor() {
     if (id === openId) return;
     setOpenId(id);
     setMeasure(null);
-    setNote(null);
-    const target = cvs.find(item => item.id === id);
-    if (target?.sections[0]) setOpen({ [target.sections[0].id]: true });
-    setView("edit");
+    setStep("you");
+    setFocusPath(null);
   }
 
   function addCv(made: Cv, focus = true) {
-    setCvs(list => [made, ...list]);
-    setOpenId(made.id);
-    setOpen(made.sections[0] ? { [made.sections[0].id]: true } : {});
-    setMeasure(null);
-    setTab("details");
-    setView("edit");
-    if (focus) {
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => document.querySelector<HTMLInputElement>('[data-field="person.name"]')?.focus()),
-      );
-    }
+    flushSync(() => {
+      setCvs(list => [made, ...list]);
+      setOpenId(made.id);
+      setMeasure(null);
+      setStep("you");
+      setFocusPath(null);
+      setView("edit");
+    });
+    if (focus) focusName();
   }
 
   function newCv() {
@@ -264,14 +305,21 @@ export default function Editor() {
       const next = [...rest].sort((a, b) => b.updatedAt - a.updatedAt)[0];
       setOpenId(next?.id ?? null);
       setMeasure(null);
+      setStep("you");
     }
-    say(`Deleted “${gone.title}”.`, () => {
+    say(`Deleted “${cvLabel(gone)}”.`, () => {
       setCvs(list => {
         const copy = [...list];
         copy.splice(Math.min(index, copy.length), 0, gone);
         return copy;
       });
       setOpenId(gone.id);
+    });
+  }
+
+  function renameCv(title: string) {
+    update(draft => {
+      draft.title = title;
     });
   }
 
@@ -380,23 +428,29 @@ export default function Editor() {
 
   async function download() {
     if (!cv || busy) return;
+    if (isBlank(cv)) {
+      flushSync(() => {
+        setStep("you");
+        setView("edit");
+      });
+      focusName();
+      say("The CV is empty. Add your name and job title first.");
+      return;
+    }
     setBusy(true);
-    setNote({ text: "Making the PDF…" });
     try {
       const blob = await fetchPdf(cv, photo?.src ?? null);
       const name = fileName(cv);
       saveBlob(blob, name);
-      setNote({ text: `Downloaded ${name}` });
       if (DONATE_URL && !askedToDonate.current) {
         askedToDonate.current = true;
         toast.show(`Downloaded ${name}. If the editor helped, you can support it with a donation.`, {
           action: { label: "Donate", href: DONATE_URL },
           ms: 10_000,
         });
-      }
+      } else toast.show(`Downloaded ${name}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "The PDF could not be made.";
-      setNote({ text: message, bad: true });
       toast.show(`${message} Your browser can print it to PDF instead.`, {
         action: { label: "Print instead", run: () => printCv(cv, cv.showPhoto ? (photo?.src ?? null) : null) },
         ms: 10_000,
@@ -428,55 +482,34 @@ export default function Editor() {
 
   /* ---------------------------------------------------- click to edit */
 
-  function focusPath(path: string) {
-    const destination: Tab = path.startsWith("sections.") ? "sections" : "details";
-    setTab(destination);
-    setView("edit");
-    if (destination === "sections") {
-      const id = path.split(".")[1];
-      setOpen(current => ({ ...current, [id]: true }));
+  /* A click on a line of the sheet opens its step and its box. */
+  function openField(path: string) {
+    if (!cv) return;
+    flushSync(() => {
+      setStep(stepForPath(cv, path));
+      setView("edit");
+    });
+    const quote = (value: string) => value.replace(/"/g, '\\"');
+    let found: HTMLElement | null = null;
+    const parts = path.split(".");
+    while (!found && parts.length) {
+      const at = quote(parts.join("."));
+      found =
+        document.querySelector<HTMLElement>(`[data-field="${at}"]`) ??
+        document.querySelector<HTMLElement>(`[data-field^="${at}."]`);
+      parts.pop();
     }
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        const quote = (value: string) => value.replace(/"/g, '\\"');
-        let found: HTMLElement | null = null;
-        const parts = path.split(".");
-        while (!found && parts.length) {
-          const at = quote(parts.join("."));
-          found =
-            document.querySelector<HTMLElement>(`[data-field="${at}"]`) ??
-            document.querySelector<HTMLElement>(`[data-field^="${at}."]`);
-          parts.pop();
-        }
-        if (!found) return;
-        const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-        found.scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
-        found.focus({ preventScroll: true });
-        found.classList.remove("found");
-        void found.offsetWidth;
-        found.classList.add("found");
-      }),
-    );
+    if (!found) return;
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    found.scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
+    found.focus({ preventScroll: true });
+    flash(found);
   }
 
-  /* ------------------------------------------------------------ layout */
-
-  const pages = measure?.count ?? 0;
-  const over = pages > template.pages;
-  const fill = measure ? Math.round(measure.lastFill * 100) : 0;
-  const fillTone = !measure ? "" : measure.lastFill > 0.94 ? "bad" : measure.lastFill > 0.86 ? "warn" : "ok";
-  const wasteTone = !measure ? "" : measure.stranded || measure.worstDead > 25 ? "warn" : "ok";
+  /* The step in use must exist: deleting a section can remove it. */
+  const steps = cv ? stepsOf(cv) : [];
+  const currentStep = steps.some(item => item.id === step) ? step : "you";
   const photoUsers = cvs.filter(item => item.showPhoto).length;
-
-  /* The header already says the CVs stay in the browser, so a plain save
-     needs one word. Only the tab that forgets says where. */
-  const savedText = saved.ok
-    ? tabOnly
-      ? "Saved in this tab"
-      : "Saved"
-    : saved.reason === "full"
-      ? "Not saved: storage is full"
-      : "Not saved: this browser blocks storage";
 
   return (
     <div className="app" data-view={view}>
@@ -484,224 +517,121 @@ export default function Editor() {
         Skip to the preview
       </a>
 
-      <header className="top">
-        <button
-          type="button"
-          className="iconbtn rail-toggle"
-          aria-label="Your CVs"
-          title={listShown ? "Hide your CVs" : "Show your CVs"}
-          aria-expanded={listShown}
-          aria-controls="library"
-          onClick={() => setPrefs({ library: listShown ? "collapsed" : undefined })}
-        >
-          <Icon name="rail" />
-        </button>
-        <h1 className="mark">
-          <Mark /> CV Editor <s className="hide-narrow">/ no account, saved in your browser</s>
-        </h1>
-        <div className="views" role="group" aria-label="Show">
-          <button type="button" aria-pressed={view === "edit"} onClick={() => setView("edit")}>
-            Edit
-          </button>
-          <button type="button" aria-pressed={view === "preview"} onClick={() => setView("preview")}>
-            Preview
-          </button>
-        </div>
-        <div className="top-end">
-          <span className={"saved " + (saved.ok ? "ok" : "bad")} role="status" aria-live="polite">
-            {savedText}
-          </span>
-          <Settings
-            ui={ui}
-            onUi={setPrefs}
-            count={cvs.length}
-            tabOnly={tabOnly}
-            onTabOnly={chooseTabOnly}
-            onBackup={backUp}
-            onRestore={file => void restore(file)}
-          />
-        </div>
-      </header>
-
-      <Library
+      <TopBar
+        cv={cv}
         cvs={cvs}
-        openId={openId}
+        update={update}
+        saved={saved}
+        tabOnly={tabOnly}
+        ui={ui}
+        onUi={setPrefs}
+        busy={busy}
         onOpen={openCv}
         onNew={newCv}
+        onSample={() => addCv(sampleCv(), false)}
         onDuplicate={duplicateCv}
         onDelete={deleteCv}
+        onRename={renameCv}
+        onTabOnly={chooseTabOnly}
+        onBackup={backUp}
+        onRestore={file => void restore(file)}
+        onDownload={() => void download()}
       />
 
-      {cv && rendered ? (
-        <Proof
-          rendered={rendered}
-          template={template}
-          zoom={ui.zoom ?? "fit"}
-          photoOverride={placing}
-          onMeasure={setMeasure}
-          onPick={focusPath}
-        />
-      ) : (
-        <main className="stage" id="preview" aria-label="Preview">
-          <div className="empty-state">
-            <h2>No CVs yet</h2>
-            <p>Start a blank one, or open the sample to see how the editor works.</p>
-            <div className="buttons">
-              <button type="button" className="save" onClick={newCv}>
-                New CV
-              </button>
-              <button type="button" className="tog" onClick={() => addCv(sampleCv(), false)}>
-                Open the sample
-              </button>
-            </div>
-          </div>
-        </main>
-      )}
-
-      <aside className="rail-right" aria-label="Edit the CV">
-        {cv && (
-          <>
-            <div className="open-on">
-              <label className="sr-only" htmlFor="cvTitle">
-                CV name
-              </label>
-              <input
-                id="cvTitle"
-                className="co"
-                value={cv.title}
-                spellCheck={false}
-                autoComplete="off"
-                onChange={event =>
-                  update(draft => {
-                    draft.title = event.target.value;
-                  })
-                }
-                onBlur={() => {
-                  if (!cv.title.trim())
+      <main className="work">
+        {cv ? (
+          <SuggestProvider value={suggesters}>
+            <Panel
+              cv={cv}
+              update={update}
+              say={say}
+              step={currentStep}
+              onStep={setStep}
+              summaryLines={measure?.summaryLines ?? null}
+              onDownload={() => void download()}
+              busy={busy}
+              onFocusPath={setFocusPath}
+              onNew={newCv}
+              photo={
+                <PhotoPane
+                  photo={photo}
+                  template={template}
+                  shown={cv.showPhoto}
+                  users={photoUsers}
+                  total={cvs.length}
+                  onShown={on =>
                     update(draft => {
-                      draft.title = "Untitled CV";
-                    });
-                }}
-              />
-              <p className="open-meta">
-                {template.name} · {pages ? `${pages} ${pages === 1 ? "page" : "pages"}` : "measuring"} · edited{" "}
-                {TIME.format(cv.updatedAt)}
-              </p>
-              {cv.sample && (
-                <p className="sample-note">
-                  This is a sample. Type your own details over it, or start from an empty CV.
-                  <br />
-                  <button type="button" onClick={newCv}>
-                    Start a blank CV
-                  </button>
-                </p>
-              )}
-              <div className="tabs" role="tablist" aria-label="Parts of the CV">
-                {TABS.map((item, index) => (
-                  <button
-                    key={item.id}
-                    id={`tab-${item.id}`}
-                    type="button"
-                    role="tab"
-                    className="tab"
-                    aria-selected={tab === item.id}
-                    aria-controls={tab === item.id ? `panel-${item.id}` : undefined}
-                    tabIndex={tab === item.id ? 0 : -1}
-                    onClick={() => setTab(item.id)}
-                    onKeyDown={event => {
-                      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-                      const step = event.key === "ArrowRight" ? 1 : -1;
-                      const next = TABS[(index + step + TABS.length) % TABS.length];
-                      setTab(next.id);
-                      requestAnimationFrame(() => document.getElementById(`tab-${next.id}`)?.focus());
-                    }}
-                  >
-                    {item.name}
-                    {item.id === "sections" && <span className="n">{cv.sections.length}</span>}
-                  </button>
-                ))}
+                      draft.showPhoto = on;
+                    })
+                  }
+                  onSave={next => {
+                    keepPhoto(next);
+                    if (!cv.showPhoto)
+                      update(draft => {
+                        draft.showPhoto = true;
+                      });
+                    say("Saved the photo.");
+                  }}
+                  onRemove={() => {
+                    const before = photo;
+                    keepPhoto(null);
+                    say("Removed the photo from every CV.", () => keepPhoto(before));
+                  }}
+                  onPreview={setPlacing}
+                  onError={message => say(message)}
+                />
+              }
+            />
+          </SuggestProvider>
+        ) : (
+          <section className="write empty" aria-label="Write your CV">
+            <div className="empty-state">
+              <h2>No CVs yet</h2>
+              <p>Start a new one, or open the sample to see how the editor works.</p>
+              <div className="buttons">
+                <button type="button" className="btn primary" onClick={newCv}>
+                  <Icon name="plus" />
+                  New CV
+                </button>
+                <button type="button" className="btn secondary" onClick={() => addCv(sampleCv(), false)}>
+                  Open the sample
+                </button>
               </div>
             </div>
+          </section>
+        )}
 
-            {tab === "details" && (
-              <DetailsTab
-                cv={cv}
-                update={update}
+        <div className="stage-wrap">
+          {cv && rendered ? (
+            <>
+              <Stage
+                rendered={rendered}
                 template={template}
-                summaryLines={measure?.summaryLines ?? null}
-                toast={say}
-                photo={
-                  <PhotoPane
-                    photo={photo}
-                    template={template}
-                    shown={cv.showPhoto}
-                    users={photoUsers}
-                    total={cvs.length}
-                    onShown={on =>
-                      update(draft => {
-                        draft.showPhoto = on;
-                      })
-                    }
-                    onSave={next => {
-                      keepPhoto(next);
-                      if (!cv.showPhoto)
-                        update(draft => {
-                          draft.showPhoto = true;
-                        });
-                      say("Saved the photo.");
-                    }}
-                    onRemove={() => {
-                      const before = photo;
-                      keepPhoto(null);
-                      say("Removed the photo from every CV.", () => keepPhoto(before));
-                    }}
-                    onPreview={setPlacing}
-                    onError={message => say(message)}
-                  />
-                }
+                zoom={ui.zoom ?? "fit"}
+                photoOverride={placing}
+                focusPath={focusPath}
+                example={example}
+                onMeasure={setMeasure}
+                onPick={openField}
               />
-            )}
-            {tab === "sections" && (
-              <SectionsTab
-                cv={cv}
-                update={update}
-                open={open}
-                setOpen={(id, on) => setOpen(current => ({ ...current, [id]: on }))}
-                toast={say}
-              />
-            )}
-            {tab === "design" && <DesignTab cv={cv} update={update} />}
-          </>
-        )}
-      </aside>
+              <SheetMeter measure={measure} template={template} example={example} />
+            </>
+          ) : (
+            <div className="stage" id="preview" role="region" aria-label="Preview of your CV" />
+          )}
+        </div>
+      </main>
 
-      <footer className="foot">
-        <div className={"gauge " + (measure ? (over ? "bad" : "ok") : "")} title={`${template.name} is meant for ${template.pages === 1 ? "one page" : `up to ${template.pages} pages`}.`}>
-          <span>Pages</span> <b>{measure ? (over ? `${pages} · over by ${pages - template.pages}` : pages) : "-"}</b>
-        </div>
-        <div className={"gauge " + fillTone}>
-          <span>{measure ? `Page ${pages}` : "Last page"}</span> <b>{measure ? `${fill}% full` : "-"}</b>
-          <span className="bar" aria-hidden="true">
-            <i style={{ transform: `scaleX(${fill / 100})` }} />
-          </span>
-        </div>
-        {measure && pages > 1 && (
-          <div className={"gauge " + wasteTone} title="Paper left empty at the foot of a page because the next entry did not fit.">
-            <span>Wasted at cut</span>{" "}
-            <b>
-              {measure.worstDead < 1 ? "flush" : `${Math.round(measure.worstDead)}mm`}
-              {measure.stranded ? " · heading stranded" : ""}
-            </b>
-          </div>
-        )}
-        <div className={"note" + (note?.bad ? " bad" : "")} role="status" aria-live="polite">
-          {note?.text}
-        </div>
-        <button type="button" className="save" onClick={() => void download()} disabled={!cv || busy}>
-          <Icon name="download" />
-          {busy ? "Making PDF…" : "Download PDF"}
+      <nav className="dock" aria-label="Show">
+        <button type="button" aria-pressed={view === "edit"} onClick={() => setView("edit")}>
+          <Icon name="pencil" />
+          Edit
         </button>
-      </footer>
+        <button type="button" aria-pressed={view === "preview"} onClick={() => setView("preview")}>
+          <Icon name="eye" />
+          Preview
+        </button>
+      </nav>
 
       <RichToolbar />
       <Toast message={toast.message} onDone={toast.hide} />
