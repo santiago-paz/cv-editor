@@ -4,7 +4,7 @@ Write a CV in the browser, see where each page breaks, and download it as a PDF.
 You don't need an account, and your CVs stay in your browser's localStorage. A
 free Google account adds one thing: a button that rewrites a block with AI.
 
-Live at https://cv-editor-ruby.vercel.app. Every push to `main` deploys there.
+Live at https://trycveditor.com. Every push to `main` deploys there.
 
 You type a few letters in a box and press Enter. The best match fills in and
 the next box opens, so a whole CV takes about a minute. On a test CV (two jobs,
@@ -257,12 +257,12 @@ runs the deletes, at most once an hour, after a sign-in or a rewrite.
 | `DATABASE_URL` | The Neon database. Vercel's Neon integration sets it. |
 | `OPERATOR_ADDRESS` | The postal address the privacy page prints. Ley 25.326 asks for it. Pages are built ahead of time, so deploy again after you set it. |
 | `BETTER_AUTH_SECRET` | A random secret that signs sessions: `openssl rand -base64 32`. |
-| `BETTER_AUTH_URL` | The site's own address: `https://cv-editor-ruby.vercel.app`, or `http://localhost:3000` in development. |
+| `BETTER_AUTH_URL` | The site's own address: `https://trycveditor.com`, or `http://localhost:3000` in development. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | A Google Cloud OAuth client of type "Web application". |
 | `ANTHROPIC_API_KEY` | A key from the Claude Console, in a workspace with a spend limit. |
 
 The Google client needs both redirect addresses:
-`https://cv-editor-ruby.vercel.app/api/auth/callback/google` and
+`https://trycveditor.com/api/auth/callback/google` and
 `http://localhost:3000/api/auth/callback/google`. Google sends people back only
 to listed addresses, so sign-in doesn't work on preview deployments.
 
