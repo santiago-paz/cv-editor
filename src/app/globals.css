@@ -377,7 +377,7 @@ ul { list-style: none; margin: 0; padding: 0; }
    a stretch of it, bare while the step is empty, tinted once it has something
    in it, and solid ultramarine under the step in use. */
 .steps { display: flex; align-items: stretch; flex: none; padding: 0 14px 0 16px; border-bottom: 1px solid var(--line); }
-.steps-scroll { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.steps-scroll { flex: 1; min-width: 0; overflow-x: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .steps-scroll::-webkit-scrollbar { display: none; }
 .steps-scroll[data-end="true"] { mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); }
 .steps-scroll[data-start="true"] { mask-image: linear-gradient(90deg, transparent, #000 36px); }
@@ -393,8 +393,8 @@ ul { list-style: none; margin: 0; padding: 0; }
   transform-origin: left center; transition: background-color .2s;
 }
 .step:hover { color: var(--ink); --seg: var(--line-strong); }
-.step[data-done] { --seg: color-mix(in oklab, var(--klein) 42%, transparent); }
-.step[data-done]:hover { --seg: color-mix(in oklab, var(--klein) 62%, transparent); }
+.step[data-done] { --seg: color-mix(in oklab, var(--klein) 62%, transparent); }
+.step[data-done]:hover { --seg: color-mix(in oklab, var(--klein) 80%, transparent); }
 .step[aria-selected="true"], .step[aria-selected="true"]:hover { color: var(--ink); --seg: var(--klein); }
 .step[aria-selected="true"]::after { animation: mark-in .28s var(--ease) both; }
 .step:focus-visible { outline-offset: -4px; border-radius: 12px; }
@@ -404,6 +404,11 @@ ul { list-style: none; margin: 0; padding: 0; }
   border: 0; border-radius: 12px; background: none; color: var(--ink-2); transition: background-color .15s, color .15s;
 }
 .steps-add:hover, .steps-add[aria-expanded="true"] { background: var(--fill); color: var(--ink); }
+/* Forced colors drop background colors, which would take the gauge with them. */
+@media (forced-colors: active) {
+  .step[data-done]::after { forced-color-adjust: none; background: GrayText; }
+  .step[aria-selected="true"]::after { forced-color-adjust: none; background: Highlight; }
+}
 
 .pane {
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 28px 28px 40px; scroll-padding: 40px 0;
