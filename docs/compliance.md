@@ -35,6 +35,7 @@ and for anyone who takes it over. It is a checklist, not legal advice.
 | Delete on a schedule | `src/lib/keep.ts` holds the windows. `src/lib/server/retention.ts` deletes, at most once an hour, after a sign-in or an AI rewrite. A quiet site clears its old rows at the next visit. |
 | Delete when asked | Settings, Delete account |
 | Browser protections | `next.config.ts` sets the security headers and a Content Security Policy |
+| Count visits without a cookie or an IP address | `<Analytics />` in `src/app/layout.tsx`, drawn only on the production deploy. Web Analytics must be switched on for the Vercel project. The privacy page says so under "Visits and logs". |
 | Sessions last 7 days | `session.expiresIn` in `src/lib/server/auth.ts`, from `KEEP.sessionDays` |
 
 The privacy page prints the windows from `keep.ts`, so the page and the code cannot drift.
@@ -51,6 +52,7 @@ When you change how data is kept, change the page in the same commit, in all fou
 | Session | A random token and an expiry date | Neon | Needed to stay signed in | 7 days after last use |
 | Rewrite count | Time, tokens, success, whether it was used | Neon | Legitimate interest: limits and budget | 12 months |
 | Hosting logs | IP address, request path | Vercel | Legitimate interest: delivery and the PDF limit | Vercel's schedule |
+| Visit count | Time, page, referrer, country, region, city, device type, browser and system. No IP address, cookie or name. | Vercel Web Analytics, United States | Legitimate interest: knowing how many people use the editor | Vercel shows 12 months on the Pro plan. It may keep the counts longer. |
 
 Save as PDF, the main button on a computer, is not a row here. The browser makes the file on the person's device, and nothing is sent.
 
@@ -58,6 +60,8 @@ Save as PDF, the main button on a computer, is not a row here. The browser makes
 
 - **Vercel.** The DPA is at vercel.com/legal/dpa. Vercel is certified under the EU-US Data
   Privacy Framework and also uses standard contractual clauses. The site runs on the Pro plan.
+  Web Analytics is one of its services. Vercel's page on it says the data is anonymous, uses no
+  third-party cookies and drops the visitor hash after 24 hours.
 - **Neon.** The DPA is built into its terms and also sits at neon.com/dpa. The database is
   in the US East region.
 - **Anthropic.** The DPA, with standard contractual clauses, is part of its commercial
@@ -121,6 +125,9 @@ These duties belong to the operator, because the code cannot do them.
   ask a local accountant how to declare the income.
 - [ ] After the first deploy, sign in once on the live site. Check the two cookies, and check
   that your session row has an empty IP address and browser string.
+- [ ] The privacy page says visits are counted with Vercel Web Analytics. Turn it on for your
+  Vercel project, on its Analytics tab or with `vercel project web-analytics enable`. Off Vercel
+  nothing counts visits, so take that text out of the four files in `src/lib/i18n/legal/`.
 
 ## AAIP registration sheet
 
@@ -147,4 +154,6 @@ person who runs the original site, so use your own details there.
   [international transfers](https://www.argentina.gob.ar/transferencias-internacionales)
 - [Anthropic API data retention](https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data)
 - [Vercel security and compliance](https://vercel.com/docs/security/compliance)
+- Vercel Web Analytics: [privacy](https://vercel.com/docs/analytics/privacy-policy) and
+  [pricing](https://vercel.com/docs/analytics/limits-and-pricing)
 - [Neon and GDPR](https://neon.com/blog/gdpr-compliance-and-neon)

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { LANG_SCRIPT } from "@/lib/i18n/boot";
 import "./globals.css";
 
@@ -31,13 +32,22 @@ const PREFS =
   `try{var u=JSON.parse(localStorage.getItem("cv-editor.v1.ui")||"{}"),r=document.documentElement;if(u.theme==="light"||u.theme==="dark")r.dataset.theme=u.theme}catch(e){}` +
   LANG_SCRIPT;
 
+/* Counts visits with Vercel Web Analytics, on the production deploy only, so a
+   preview or a local run counts nothing. It sets no cookie and keeps no IP
+   address, and it loads from this site's own address, so the CSP needs no
+   entry for it. The privacy page says all this, so change them together. */
+const COUNT_VISITS = process.env.VERCEL_ENV === "production";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${sans.variable} ${display.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: PREFS }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {COUNT_VISITS && <Analytics />}
+      </body>
     </html>
   );
 }

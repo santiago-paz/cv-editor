@@ -65,6 +65,13 @@ Rules the privacy page promises, so the code must keep them:
 - Sign-in keeps no IP address, browser string, Google profile photo link or
   Google token. `makeHooks` in `src/lib/server/auth-hooks.ts` blanks them, and
   `tests/auth-hooks.test.ts` runs the real Better Auth to prove it.
+- Visits are counted by Vercel Web Analytics and nothing else. `<Analytics />`
+  in `src/app/layout.tsx` draws only on the production deploy. It sets no
+  cookie and keeps no IP address, and it loads from the site's own address, so
+  the Content Security Policy needs no entry for it. A custom event or another
+  analytics tool needs a line on the privacy page and a row in
+  `docs/compliance.md` first, and must never carry CV text or anything
+  personal.
 - How long the server keeps data lives in `src/lib/keep.ts`. `retention.ts`
   enforces it and the privacy page prints it, so change the numbers there and
   nowhere else.

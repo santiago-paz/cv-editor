@@ -103,8 +103,8 @@ const pt: LegalText = {
           </li>
         </ul>
         <p>
-          Seus currículos e configurações ficam no armazenamento do seu navegador, e não em cookies. Não há anúncios,
-          ferramentas de análise nem rastreamento.
+          Seus currículos e configurações ficam no armazenamento do seu navegador, e não em cookies. Não há anúncios e
+          não rastreamos você entre sites. A contagem de visitas descrita abaixo também não usa cookies.
         </p>
 
         <h2>Visitas e registros</h2>
@@ -113,10 +113,18 @@ const pt: LegalText = {
           limitar quantos PDFs um mesmo endereço pode pedir por minuto. O aviso de privacidade da própria Vercel diz por
           quanto tempo ela guarda os registros. Não guardamos endereços IP no nosso banco de dados.
         </p>
+        <p>
+          Também contamos as visitas, com o Web Analytics da Vercel. Ele não usa cookies, e as contagens não têm
+          endereço IP nem nome. De cada visita, ele registra a hora, a página, o site de onde você veio, seu país, sua
+          região e sua cidade, o tipo de dispositivo e seu navegador e sistema. Para distinguir os visitantes, ele usa
+          um código criado a partir da requisição. A Vercel apaga esse código após 24 horas, e depois disso nada liga
+          uma visita à seguinte. Só vemos totais, como as visitas por página ou por país, para saber quantas pessoas
+          usam o editor.
+        </p>
 
         <h2>Quem lida com os dados</h2>
         <ul>
-          <li>A Vercel hospeda o site e opera o servidor, nos Estados Unidos.</li>
+          <li>A Vercel hospeda o site, opera o servidor e conta as visitas, nos Estados Unidos.</li>
           <li>A Neon armazena as contas e a contagem de reescritas, nos Estados Unidos.</li>
           <li>A Anthropic escreve as sugestões da IA, nos Estados Unidos.</li>
           <li>O Google cuida do login, conforme a própria política de privacidade.</li>
@@ -135,10 +143,11 @@ const pt: LegalText = {
             Para contar as reescritas, aplicar os limites e impedir abusos, de modo que o teste gratuito da IA fique
             dentro do orçamento.
           </li>
+          <li>Para contar as visitas e saber quantas pessoas usam o editor.</li>
         </ul>
         <p>
           Se você está na UE ou no Reino Unido, a base legal é o contrato para os dois primeiros e o legítimo interesse
-          para o terceiro.
+          para os dois últimos.
         </p>
 
         <h2>Por quanto tempo guardamos os dados</h2>
@@ -153,6 +162,7 @@ const pt: LegalText = {
             Sua conta: até você excluí-la. Também excluímos uma conta que está há {KEEP.idleAccountMonths} meses sem
             nenhuma reescrita com IA.
           </li>
+          <li>Contagem de visitas: a Vercel nos mostra os últimos 12 meses.</li>
         </ul>
         <p>Quando excluímos dados, cópias podem ficar em backups do banco de dados por pouco tempo.</p>
 

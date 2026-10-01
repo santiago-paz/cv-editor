@@ -108,7 +108,8 @@ const de: LegalText = {
         </ul>
         <p>
           Deine Lebensläufe und Einstellungen liegen im Speicher deines Browsers, nicht in Cookies. Es gibt keine
-          Werbung, keine Webanalyse und kein Tracking.
+          Werbung, und wir verfolgen dich nicht über Websites hinweg. Auch die unten beschriebene Besuchszählung setzt
+          keine Cookies.
         </p>
 
         <h2>Besuche und Protokolle</h2>
@@ -118,10 +119,18 @@ const de: LegalText = {
           Datenschutzerklärung von Vercel steht, wie lange Vercel seine Protokolle aufbewahrt. Wir speichern keine
           IP-Adressen in unserer Datenbank.
         </p>
+        <p>
+          Wir zählen außerdem die Besuche, mit Vercel Web Analytics. Es setzt keine Cookies, und die Zahlen enthalten
+          weder IP-Adressen noch Namen. Zu jedem Besuch speichert es die Uhrzeit, die Seite, die Website, von der du
+          kamst, dein Land, deine Region und deine Stadt, den Gerätetyp sowie deinen Browser und dein System. Um
+          Besucher zu unterscheiden, nutzt es einen Code, der aus der Anfrage entsteht. Vercel löscht diesen Code nach
+          24 Stunden, und danach verbindet nichts mehr einen Besuch mit dem nächsten. Wir sehen nur Summen, etwa die
+          Besuche pro Seite oder pro Land, um zu erfahren, wie viele Menschen den Editor nutzen.
+        </p>
 
         <h2>Wer die Daten verarbeitet</h2>
         <ul>
-          <li>Vercel hostet die Website und betreibt den Server, beides in den USA.</li>
+          <li>Vercel hostet die Website, betreibt den Server und zählt die Besuche, alles in den USA.</li>
           <li>Neon speichert Konten und die Anzahl der KI-Überarbeitungen in den USA.</li>
           <li>Anthropic schreibt die KI-Vorschläge in den USA.</li>
           <li>Google übernimmt die Anmeldung nach seiner eigenen Datenschutzerklärung.</li>
@@ -140,10 +149,11 @@ const de: LegalText = {
             Um KI-Überarbeitungen zu zählen, Limits durchzusetzen und Missbrauch zu stoppen, damit der kostenlose
             KI-Test im Budget bleibt.
           </li>
+          <li>Um Besuche zu zählen, damit wir wissen, wie viele Menschen den Editor nutzen.</li>
         </ul>
         <p>
           Wenn du in der EU oder im Vereinigten Königreich bist, ist die Rechtsgrundlage für die ersten beiden Punkte
-          der Vertrag und für den dritten das berechtigte Interesse.
+          der Vertrag und für die letzten beiden das berechtigte Interesse.
         </p>
 
         <h2>Wie lange wir Daten speichern</h2>
@@ -158,6 +168,7 @@ const de: LegalText = {
             Dein Konto: bis du es löschst. Wir löschen auch ein Konto, das seit {KEEP.idleAccountMonths} Monaten keine
             KI-Überarbeitung hatte.
           </li>
+          <li>Besuchszahlen: Vercel zeigt uns die letzten 12 Monate.</li>
         </ul>
         <p>Wenn wir Daten löschen, können Kopien noch für kurze Zeit in Datenbanksicherungen bleiben.</p>
 

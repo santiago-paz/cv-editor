@@ -98,8 +98,8 @@ const en: LegalText = {
           </li>
         </ul>
         <p>
-          Your CVs and settings sit in your browser&apos;s storage, not in cookies. There are no ads, no analytics and
-          no tracking.
+          Your CVs and settings sit in your browser&apos;s storage, not in cookies. There are no ads, and we don&apos;t
+          track you across sites. The visit count described below sets no cookie either.
         </p>
 
         <h2>Visits and logs</h2>
@@ -108,10 +108,17 @@ const en: LegalText = {
           to limit how many PDFs one address can ask for each minute. Vercel&apos;s own privacy notice says how long it
           keeps its logs. We don&apos;t store IP addresses in our database.
         </p>
+        <p>
+          We also count visits, with Vercel Web Analytics. It sets no cookie, and the counts hold no IP address and no
+          name. For each visit it records the time, the page, the site you came from, your country, region and city,
+          your device type, and your browser and system. To tell visitors apart, it uses a code made from the request.
+          Vercel deletes that code after 24 hours, and after that nothing links one visit to the next. We see only
+          totals, such as visits per page or per country, to learn how many people use the editor.
+        </p>
 
         <h2>Who handles the data</h2>
         <ul>
-          <li>Vercel hosts the site and runs the server, in the United States.</li>
+          <li>Vercel hosts the site, runs the server and counts visits, in the United States.</li>
           <li>Neon stores accounts and rewrite counts, in the United States.</li>
           <li>Anthropic writes the AI suggestions, in the United States.</li>
           <li>Google handles sign-in, under its own privacy policy.</li>
@@ -127,8 +134,9 @@ const en: LegalText = {
           <li>To make your PDF and write your AI suggestions, because you ask for them.</li>
           <li>To keep your account, because you make it and agree to it.</li>
           <li>To count rewrites, apply the limits and stop abuse, so the free AI test stays within its budget.</li>
+          <li>To count visits, so we know how many people use the editor.</li>
         </ul>
-        <p>If you are in the EU or the UK, the legal basis is contract for the first two and legitimate interest for the third.</p>
+        <p>If you are in the EU or the UK, the legal basis is contract for the first two and legitimate interest for the last two.</p>
 
         <h2>How long we keep it</h2>
         <ul>
@@ -140,6 +148,7 @@ const en: LegalText = {
             Your account: until you delete it. We also delete an account that has had no AI rewrite for{" "}
             {KEEP.idleAccountMonths} months.
           </li>
+          <li>Visit counts: Vercel shows us the last 12 months.</li>
         </ul>
         <p>When we delete data, copies can stay in database backups for a short time.</p>
 
