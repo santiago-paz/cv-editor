@@ -610,6 +610,7 @@ export default function Editor() {
                 zoom={ui.zoom ?? "fit"}
                 photoOverride={placing}
                 focusPath={focusPath}
+                docId={cv.id}
                 example={example}
                 onMeasure={setMeasure}
                 onPick={openField}

@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
+import { flushSync } from "react-dom";
 import type { Rendered } from "@/lib/cv/render";
 import type { Template } from "@/lib/cv/templates";
 import { measureFlow } from "@/lib/measure";
 import { paginate, type Pagination } from "@/lib/paginate";
+import { PHOTO, glide, left, movable, moving, printsPhoto } from "@/lib/photo-motion";
 
 /* The stage: the CV set in an iframe with its own stylesheet, on a sheet the
    width of A4, with the page cuts drawn where Chrome will break the pages.
@@ -16,7 +18,10 @@ import { paginate, type Pagination } from "@/lib/paginate";
 
    The other way round, the box that has focus in the writing panel is marked
    on the sheet with a highlighter stroke, line by line, and the sheet scrolls
-   to keep it in view. So what you type always shows where it lands. */
+   to keep it in view. So what you type always shows where it lands.
+
+   When the photo is switched on or off, its room opens or shuts and the copy
+   glides to its new place, where it would otherwise jump. */
 
 export const PX_PER_MM = 96 / 25.4;
 const SHEET_MM = 210;
@@ -108,6 +113,7 @@ export default function Stage({
   zoom,
   photoOverride,
   focusPath,
+  docId,
   example,
   onMeasure,
   onPick,
@@ -118,6 +124,9 @@ export default function Stage({
   photoOverride: string | null;
   /** The field that has focus in the writing panel. */
   focusPath: string | null;
+  /** Which CV is on the sheet. A photo that comes or goes in the same CV
+      glides; another CV is painted in one go. */
+  docId: string;
   /** The sheet shows an example, not the person's own CV: no click to edit. */
   example: boolean;
   onMeasure: (measure: Measure) => void;
@@ -125,7 +134,9 @@ export default function Stage({
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const painted = useRef({ css: "", body: "", lang: "" });
+  const painted = useRef({ css: "", body: "", lang: "", doc: "" });
+  const following = useRef<Animation | null>(null);
+  const docKey = `${docId}|${example}`;
   const [loaded, setLoaded] = useState(false);
   const [height, setHeight] = useState(PAGE_MM * PX_PER_MM);
   const [cuts, setCuts] = useState<number[]>([]);
@@ -243,31 +254,80 @@ export default function Stage({
   const applyPhoto = useCallback(() => {
     const doc = frame.current?.contentDocument;
     if (!doc || !photoOverride) return;
-    doc.querySelectorAll<HTMLImageElement>('img[data-edit="photo"]').forEach(img => {
+    doc.querySelectorAll<HTMLImageElement>(PHOTO).forEach(img => {
       if (img.src !== photoOverride) img.src = photoOverride;
     });
   }, [photoOverride]);
 
+  /* While the photo's room moves, the words move with it. The marker keeps to
+     the words it is on, drawn in the frame it is read in: left to React's
+     usual timing it would trail the words by a frame. When the room has
+     settled the sheet is measured again, because a header that grew or shrank
+     can shift a page cut. */
+  const follow = useCallback(
+    (move: Animation) => {
+      if (following.current === move) return;
+      following.current = move;
+      const tick = () => {
+        flushSync(() => light(false));
+        if (move.playState === "running") requestAnimationFrame(tick);
+        else if (move.playState === "finished") requestAnimationFrame(measure);
+      };
+      requestAnimationFrame(tick);
+    },
+    [light, measure],
+  );
+
   /* Paint the CV into the frame, then measure once its fonts are in. A short
-     wait lets a run of keystrokes paint once. */
+     wait lets a run of keystrokes paint once.
+
+     A photo that comes or goes in the CV already on the sheet is the one
+     change that is played. One that comes is painted, then its room opens.
+     One that goes keeps the old copy up until its room has shut, and the new
+     copy replaces it then, so the copy never jumps. Anything else that moves
+     the photo with it, another CV or another template, is painted as it is. */
   useEffect(() => {
     if (!loaded) return;
+    let swap = 0;
     const timer = window.setTimeout(() => {
-      const doc = frame.current?.contentDocument;
-      if (!doc?.body) return;
+      const element = frame.current;
+      const doc = element?.contentDocument;
+      if (!element || !doc?.body) return;
       const done = painted.current;
-      if (done.lang !== rendered.lang) doc.documentElement.lang = done.lang = rendered.lang;
-      if (done.css !== rendered.css) {
-        const style = doc.getElementById("tpl");
-        if (style) style.textContent = done.css = rendered.css;
+
+      const paint = () => {
+        if (done.lang !== rendered.lang) doc.documentElement.lang = done.lang = rendered.lang;
+        if (done.css !== rendered.css) {
+          const style = doc.getElementById("tpl");
+          if (style) style.textContent = done.css = rendered.css;
+        }
+        if (done.body !== rendered.body) doc.body.innerHTML = done.body = rendered.body;
+        done.doc = docKey;
+        applyPhoto();
+        void doc.body.offsetHeight; // starts the font loads this layout needs
+        doc.fonts.ready.then(() => requestAnimationFrame(measure));
+      };
+
+      const same = done.doc === docKey && done.body !== "" && done.css === rendered.css && movable(element);
+      const photo = doc.querySelector<HTMLImageElement>(PHOTO);
+      if (same && photo && !printsPhoto(rendered.body)) {
+        const shutting = glide(photo, "close");
+        follow(shutting);
+        swap = window.setTimeout(paint, left(shutting));
+        return;
       }
-      if (done.body !== rendered.body) doc.body.innerHTML = done.body = rendered.body;
-      applyPhoto();
-      void doc.body.offsetHeight; // starts the font loads this layout needs
-      doc.fonts.ready.then(() => requestAnimationFrame(measure));
+      /* The photo was on its way out and is wanted again: open the room from
+         where it has got to. */
+      if (same && photo && moving(photo)?.id === "close") follow(glide(photo, "open"));
+      paint();
+      const arrived = same && !photo ? doc.querySelector<HTMLImageElement>(PHOTO) : null;
+      if (arrived) follow(glide(arrived, "open"));
     }, 70);
-    return () => window.clearTimeout(timer);
-  }, [loaded, rendered, measure, applyPhoto]);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(swap);
+    };
+  }, [loaded, rendered, docKey, measure, applyPhoto, follow]);
 
   useEffect(applyPhoto, [applyPhoto]);
 
@@ -355,7 +415,7 @@ export default function Stage({
                   sandbox="allow-same-origin"
                   tabIndex={-1}
                   onLoad={() => {
-                    painted.current = { css: "", body: "", lang: "" };
+                    painted.current = { css: "", body: "", lang: "", doc: "" };
                     setLoaded(true);
                   }}
                   style={{ width: innerWidth, height, pointerEvents: "none" }}
