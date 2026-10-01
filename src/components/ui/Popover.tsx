@@ -36,6 +36,8 @@ export interface PopoverApi {
 }
 
 const FOCUSABLE = 'input, select, textarea, button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+/* menuitem, menuitemradio and menuitemcheckbox. */
+const MENU_ITEMS = '[role^="menuitem"]:not([disabled])';
 
 export function Popover({
   label,
@@ -126,7 +128,9 @@ export function Popover({
     if (!open || !place) return;
     const element = panel.current;
     if (!element || element.contains(document.activeElement)) return;
-    const first = element.querySelector<HTMLElement>(menu ? '[role="menuitem"]:not([disabled])' : "[data-autofocus]") ??
+    const first =
+      element.querySelector<HTMLElement>("[data-autofocus]") ??
+      element.querySelector<HTMLElement>(menu ? MENU_ITEMS : FOCUSABLE) ??
       element.querySelector<HTMLElement>(FOCUSABLE);
     first?.focus();
   }, [open, place, menu]);
@@ -138,7 +142,7 @@ export function Popover({
       return;
     }
     if (menu && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
-      const items = Array.from(panel.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? []);
+      const items = Array.from(panel.current?.querySelectorAll<HTMLElement>(MENU_ITEMS) ?? []);
       if (!items.length) return;
       event.preventDefault();
       const at = items.indexOf(document.activeElement as HTMLElement);

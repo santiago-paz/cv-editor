@@ -1,5 +1,6 @@
 import { documentHtml, fileName, renderCv } from "./cv/render";
 import type { Cv } from "./cv/types";
+import { PdfError } from "./errors";
 
 /* There are two ways to get the PDF.
 
@@ -41,8 +42,8 @@ export function saveBlob(blob: Blob, name: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
-/** Asks the server to print the CV and returns the PDF. Throws with a message
-    fit to show when it cannot. */
+/** Asks the server to print the CV and returns the PDF. Throws a PdfError, with
+    a message fit to show, when it cannot. */
 export async function fetchPdf(cv: Cv, photo: string | null): Promise<Blob> {
   let response: Response;
   try {
@@ -52,19 +53,26 @@ export async function fetchPdf(cv: Cv, photo: string | null): Promise<Blob> {
       body: JSON.stringify({ cv, photo: cv.showPhoto ? photo : null }),
     });
   } catch {
-    throw new Error("Could not reach the server to make the PDF.");
+    throw new PdfError("unreachable", "Could not reach the server to make the PDF.");
   }
   /* Vercel's firewall allows each address 20 PDFs a minute and answers the
      rest itself, before the route runs. */
   if (response.status === 429) {
-    throw new Error("Too many PDFs came from this network in the last minute. Wait a minute, then try again.");
+    throw new PdfError(
+      "rateLimit",
+      "Too many PDFs came from this network in the last minute. Wait a minute, then try again.",
+      429,
+    );
   }
   if (!response.ok) {
-    /* The route puts a message in "error". Vercel's own replies put an
-       object there, which is no use to show. */
-    const body = (await response.json().catch(() => null)) as { error?: unknown } | null;
+    /* The route puts a message in "error" and a name for it in "code". Vercel's
+       own replies put an object in "error", which is no use to show. */
+    const body = (await response.json().catch(() => null)) as { error?: unknown; code?: unknown } | null;
     const message = typeof body?.error === "string" ? body.error : "";
-    throw new Error(message || `The server could not make the PDF (error ${response.status}).`);
+    if (!message) {
+      throw new PdfError("status", `The server could not make the PDF (error ${response.status}).`, response.status);
+    }
+    throw new PdfError(typeof body?.code === "string" ? body.code : "server", message, response.status);
   }
   return response.blob();
 }

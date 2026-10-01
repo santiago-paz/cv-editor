@@ -4,6 +4,7 @@ import { useState } from "react";
 import { link } from "@/lib/cv/defaults";
 import type { Link } from "@/lib/cv/types";
 import { printedLink } from "@/lib/suggest/contact";
+import { useT } from "../i18n";
 import { useSuggest } from "../suggest-context";
 import type { Say } from "../types";
 import { AddButton, IconButton } from "../ui/bits";
@@ -21,7 +22,7 @@ export function LinksEditor({
   edit,
   say,
   max = 12,
-  addLabel = "Add a link",
+  addLabel,
 }: {
   links: Link[];
   /** The path of one link is `${path}.${id}`. */
@@ -31,6 +32,7 @@ export function LinksEditor({
   max?: number;
   addLabel?: string;
 }) {
+  const t = useT();
   const suggest = useSuggest();
   const [custom, setCustom] = useState<Record<string, boolean>>({});
 
@@ -51,7 +53,7 @@ export function LinksEditor({
       list.splice(index, 1);
     });
     if (gone.url.trim() || gone.label.trim()) {
-      say("Deleted the link.", () =>
+      say(t.links.deleted, () =>
         edit(list => {
           list.splice(Math.min(index, list.length), 0, gone);
         }),
@@ -96,25 +98,25 @@ export function LinksEditor({
                 openOnFocus
                 field={`${path}.${item.id}`}
                 inputMode="url"
-                aria-label={`Link ${index + 1}`}
+                aria-label={t.links.label(index + 1)}
                 placeholder={index === 0 ? "linkedin.com/in/you" : "github.com/you"}
                 onAdvance={input => advance(index, input)}
               />
-              <IconButton icon="close" label={`Delete link ${index + 1}`} danger tabIndex={-1} onClick={() => remove(index)} />
+              <IconButton icon="close" label={t.links.delete(index + 1)} danger tabIndex={-1} onClick={() => remove(index)} />
             </div>
             {showLabel ? (
               <Combo
                 value={item.label}
                 onChange={set(item.id, "label")}
                 boxClassName="quiet"
-                aria-label={`Link ${index + 1}, text to print`}
-                placeholder={printedLink(item.url) || "Text to print"}
+                aria-label={t.links.textLabel(index + 1)}
+                placeholder={printedLink(item.url) || t.links.textPlaceholder}
                 onAdvance={input => advance(index, input)}
               />
             ) : (
               item.url.trim() && (
                 <button type="button" className="text-button" onClick={() => setCustom(current => ({ ...current, [item.id]: true }))}>
-                  Prints as <b>{printedLink(item.url)}</b>. Change
+                  {t.links.prints(printedLink(item.url))}
                 </button>
               )
             )}
@@ -123,7 +125,7 @@ export function LinksEditor({
       })}
       {links.length < max && (
         <AddButton flow={false} onClick={() => add(links.length)}>
-          {addLabel}
+          {addLabel ?? t.links.add}
         </AddButton>
       )}
     </div>

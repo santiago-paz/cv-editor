@@ -28,6 +28,11 @@ export function uid(): string {
 /** The sidebar template's own navy. */
 export const DEFAULT_ACCENT = "#10365C";
 
+/** The title a CV carries until it is named. It is a marker inside the data,
+    not a word to show: lists use `cvLabel`, which says what the editor calls
+    such a CV in the language it speaks. */
+export const UNTITLED = "Untitled CV";
+
 export const bullet = (html = ""): Bullet => ({ id: uid(), html });
 export const link = (label = "", url = ""): Link => ({ id: uid(), label, url });
 export const skill = (text = ""): Skill => ({ id: uid(), text });
@@ -72,7 +77,7 @@ export function section(preset: PresetId, locale: Locale): Section {
   }
 }
 
-export function blankCv(locale: Locale, title = "Untitled CV"): Cv {
+export function blankCv(locale: Locale, title = UNTITLED): Cv {
   const now = Date.now();
   return {
     id: uid(),
@@ -116,11 +121,17 @@ function reId(value: unknown): void {
   }
 }
 
-/** "Frontend CV" -> "Frontend CV (copy)", then "(copy 2)" and so on. */
-export function copyTitle(title: string, taken: string[]): string {
-  const base = title.replace(/\s*\(copy(?: \d+)?\)$/, "") || "Untitled CV";
-  let next = `${base} (copy)`;
-  for (let n = 2; taken.includes(next); n++) next = `${base} (copy ${n})`;
+/** What each language of the editor calls a copy. A copy made in one language
+    is still recognized as a copy in another. */
+export const COPY_WORDS = ["copy", "copia", "Kopie", "cópia"];
+const COPY_SUFFIX = new RegExp(`\\s*\\((?:${COPY_WORDS.join("|")})(?: \\d+)?\\)$`, "i");
+
+/** "Frontend CV" -> "Frontend CV (copy)", then "(copy 2)" and so on, with the
+    word of the editor's language. */
+export function copyTitle(title: string, taken: string[], word = "copy"): string {
+  const base = title.replace(COPY_SUFFIX, "") || UNTITLED;
+  let next = `${base} (${word})`;
+  for (let n = 2; taken.includes(next); n++) next = `${base} (${word} ${n})`;
   return next;
 }
 

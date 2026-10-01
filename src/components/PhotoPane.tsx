@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import type { Template } from "@/lib/cv/templates";
 import type { Photo } from "@/lib/cv/types";
+import type { Dict } from "@/lib/i18n/en";
 import { MAX_ZOOM, createStage, render, shrink, type Square, type Stage } from "@/lib/photo-crop";
+import { useT } from "./i18n";
 import { Icon } from "./icons";
 
 /* One photo serves every CV. This pane uploads it, places it in the frame
@@ -32,10 +34,10 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-function shapeName(round: number): string {
-  if (round > 0.49) return "circle";
-  if (round < 0.01) return "square";
-  return "rounded square";
+function shapeName(round: number, t: Dict["photo"]): string {
+  if (round > 0.49) return t.circle;
+  if (round < 0.01) return t.square;
+  return t.rounded;
 }
 
 export default function PhotoPane({
@@ -62,6 +64,7 @@ export default function PhotoPane({
   onPreview: (src: string | null) => void;
   onError: (message: string) => void;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [readout, setReadout] = useState({ zoom: 0, percent: 100, dpi: 0 });
   const [dropping, setDropping] = useState(false);
@@ -170,7 +173,7 @@ export default function PhotoPane({
       if (stage.current) stop();
       begin(await loadImage(source), null, source, true);
     } catch {
-      onError(`Could not read ${picked.name || "that file"}. Use a JPEG, PNG or WebP photo.`);
+      onError(t.photo.readFail(picked.name || t.photo.thatFile));
     }
   }
 
@@ -187,7 +190,7 @@ export default function PhotoPane({
         begin(await loadImage(photo.src), null, photo.src, false);
       }
     } catch {
-      onError("Could not open the saved photo. Upload it again.");
+      onError(t.photo.openFail);
     }
   }
 
@@ -218,13 +221,13 @@ export default function PhotoPane({
   };
 
   const level = readout.dpi >= PRINT_DPI ? "ok" : readout.dpi >= SOFT_DPI ? "warn" : "bad";
-  const reach =
-    total <= 1 ? "" : users === total ? `All ${total} CVs print this photo.` : `${users} of ${total} CVs print this photo.`;
+  const reach = total <= 1 ? "" : users === total ? t.photo.reachAll(total) : t.photo.reachSome(users, total);
+  const shape = shapeName(round, t.photo);
 
   return (
     <section
       className={"photo" + (dropping ? " dropping" : "")}
-      aria-label="Photo"
+      aria-label={t.photo.label}
       style={{ ["--shape" as string]: `${round * 100}%` }}
       onDragOver={onDrag}
       onDragLeave={event => {
@@ -240,7 +243,7 @@ export default function PhotoPane({
         <button
           type="button"
           className={"avatar" + (photo ? "" : " empty")}
-          aria-label={photo ? "Adjust your photo" : "Add a photo"}
+          aria-label={photo ? t.photo.adjustLabel : t.photo.addLabel}
           data-field="photo"
           onClick={() => (photo ? void adjust() : file.current?.click())}
         >
@@ -253,37 +256,37 @@ export default function PhotoPane({
         </button>
         <div className="photo-about">
           <p className="photo-title">
-            Photo <span className="tag">Optional</span>
+            {t.photo.label} <span className="tag">{t.photo.optional}</span>
           </p>
           <p className="photo-sub">
-            Prints as a {Math.round(frameMm)}&nbsp;mm {shapeName(round)} on {template.name}.{" "}
-            {!photo && "Drop an image here, or pick one. It stays in this browser."}
+            {t.photo.prints(Math.round(frameMm), shape, t.templates[template.id].name)}{" "}
+            {!photo && t.photo.drop}
             {reach && ` ${reach}`}
           </p>
           <div className="photo-buttons">
             {photo ? (
               <>
                 <button type="button" className="chip-button" onClick={() => void adjust()}>
-                  Adjust
+                  {t.photo.adjust}
                 </button>
                 <button type="button" className="chip-button" onClick={() => file.current?.click()}>
-                  Upload new
+                  {t.photo.uploadNew}
                 </button>
                 <button type="button" className="chip-button danger" onClick={onRemove}>
-                  Remove
+                  {t.photo.remove}
                 </button>
               </>
             ) : (
               <button type="button" className="chip-button" onClick={() => file.current?.click()}>
                 <Icon name="image" size={14} />
-                Upload a photo
+                {t.photo.upload}
               </button>
             )}
           </div>
           {photo && (
             <label className="switch">
               <input type="checkbox" checked={shown} onChange={event => onShown(event.target.checked)} />
-              <span>Print it on this CV</span>
+              <span>{t.photo.printHere}</span>
             </label>
           )}
         </div>
@@ -302,14 +305,14 @@ export default function PhotoPane({
           }}
         >
           <h2 className="dialog-title" id="photo-dialog-title">
-            Place your photo
+            {t.photo.dialogTitle}
           </h2>
           <div
             className="crop-stage"
             ref={stageRoot}
             tabIndex={0}
             role="application"
-            aria-label="Photo position"
+            aria-label={t.photo.position}
             aria-describedby="cropHint"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -322,7 +325,7 @@ export default function PhotoPane({
             </svg>
           </div>
           <div className="zoom-row">
-            <button type="button" className="iconbtn" aria-label="Zoom out" onClick={() => stage.current?.zoomBy(1 / 1.25)}>
+            <button type="button" className="iconbtn" aria-label={t.photo.zoomOut} onClick={() => stage.current?.zoomBy(1 / 1.25)}>
               <Icon name="minus" />
             </button>
             <input
@@ -331,41 +334,38 @@ export default function PhotoPane({
               max={100}
               step={0.1}
               value={readout.zoom}
-              aria-label="Zoom"
+              aria-label={t.photo.zoom}
               aria-valuetext={`${readout.percent}%`}
               onChange={event => stage.current?.zoomTo(Math.pow(MAX_ZOOM, Number(event.target.value) / 100))}
             />
-            <button type="button" className="iconbtn" aria-label="Zoom in" onClick={() => stage.current?.zoomBy(1.25)}>
+            <button type="button" className="iconbtn" aria-label={t.photo.zoomIn} onClick={() => stage.current?.zoomBy(1.25)}>
               <Icon name="plus" />
             </button>
           </div>
           <div className={"photo-res " + level}>
-            <span>
-              {Math.round(frameMm)}&nbsp;mm {shapeName(round)}
-            </span>
+            <span>{t.photo.size(Math.round(frameMm), shape)}</span>
             <span aria-hidden="true">·</span>
             <b>
-              {readout.dpi}&nbsp;dpi
-              {level === "warn" ? ", may print soft" : level === "bad" ? ", will print soft" : ""}
+              {t.photo.dpi(readout.dpi)}
+              {level === "warn" ? t.photo.mayPrintSoft : level === "bad" ? t.photo.willPrintSoft : ""}
             </b>
             <button type="button" className="text-button" onClick={() => stage.current?.reset()}>
-              Reset
+              {t.photo.reset}
             </button>
           </div>
           <p className="field-hint" id="cropHint">
-            Drag to move the photo, or double-click a spot to center it. Scroll or pinch to zoom. On the keyboard, the
-            arrow keys move it and + and - zoom.
+            {t.photo.hint}
           </p>
           <div className="dialog-actions">
             <button type="button" className="btn quiet" onClick={() => file.current?.click()}>
-              Upload new
+              {t.photo.uploadNew}
             </button>
             <span className="grow" />
             <button type="button" className="btn secondary" onClick={stop}>
-              Cancel
+              {t.common.cancel}
             </button>
             <button type="button" className="btn primary" disabled={!draft.changed} onClick={save}>
-              Save photo
+              {t.photo.save}
             </button>
           </div>
         </dialog>

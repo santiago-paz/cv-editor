@@ -263,6 +263,9 @@ ul { list-style: none; margin: 0; padding: 0; }
 .menu-item:disabled { opacity: .4; cursor: default; }
 .menu-item.danger { color: var(--bad); }
 .menu-item .icon { color: var(--ink-2); }
+.menu-item .menu-text { flex: 1; }
+.menu-item.on { background: var(--klein-soft); }
+.menu-item.on .icon { color: var(--klein); }
 .menu-item.danger .icon { color: inherit; }
 .menu-text small { display: block; margin-top: 1px; font-weight: 450; font-size: 13px; color: var(--ink-2); }
 .menu[role="menu"] > .menu-note { padding: 10px 12px; }
@@ -732,6 +735,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .doc { height: 100vh; height: 100dvh; overflow: auto; background: var(--surface); color: var(--ink); }
 .doc-inner { max-width: 680px; margin: 0 auto; padding: 28px 24px 96px; }
 .doc-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 56px; }
+.doc-top-end { display: flex; align-items: center; gap: 14px; }
 .doc-brand {
   display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none;
   font: 700 20px/1 var(--display); letter-spacing: -.025em;
@@ -751,6 +755,15 @@ ul { list-style: none; margin: 0; padding: 0; }
 .doc li::marker { color: var(--klein); }
 .doc code { font-size: .88em; overflow-wrap: anywhere; }
 .doc a:not(.doc-brand):not(.doc-back) { color: var(--klein); text-underline-offset: 3px; }
+
+/* The page holds every language and shows the one <html lang> names, English
+   when it names none of them. `revert` gives each element its own display back,
+   block for a section and inline for a link's words. */
+.doc-lang { display: none; }
+:root:not([lang="es"], [lang="de"], [lang="pt"]) .doc-lang[lang="en"],
+:root[lang="es"] .doc-lang[lang="es"],
+:root[lang="de"] .doc-lang[lang="de"],
+:root[lang="pt"] .doc-lang[lang="pt"] { display: revert; }
 
 /* ------------------------------------------------------------- the stage */
 

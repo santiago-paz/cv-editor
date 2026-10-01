@@ -2,6 +2,7 @@
 
 import { createPortal } from "react-dom";
 import type { Suggestion } from "@/lib/suggest/types";
+import { useT } from "../i18n";
 import { Key } from "../icons";
 import { ranged } from "./util";
 
@@ -59,12 +60,13 @@ export function SuggestList({
   /** Lets a long line take two rows instead of being cut, for bullets and drafts. */
   wrap?: boolean;
 }) {
+  const t = useT();
   return createPortal(
     <ul
       className={"pop" + (wrap ? " wrap" : "")}
       id={`${id}-list`}
       role="listbox"
-      aria-label="Suggestions"
+      aria-label={t.suggest.label}
       style={{
         left: place.left,
         width: Math.max(place.width, 240),

@@ -1,8 +1,11 @@
 import { readCv, readPhoto } from "./cv/schema";
 import type { Cv, Photo } from "./cv/types";
+import { BackupError } from "./errors";
+import { KEYS, read, store, write, type Area, type WriteResult } from "./kv";
 
 /* Everything is kept in this browser's localStorage: the CVs, the photo and a
-   few view settings. Nothing is sent anywhere until a PDF is asked for.
+   few view settings (ui-prefs.ts). Nothing is sent anywhere until a PDF is asked
+   for.
 
    A tab can keep its CVs and photo in sessionStorage instead, which the
    browser empties when the tab closes. That is for a shared computer. The flag
@@ -10,52 +13,11 @@ import type { Cv, Photo } from "./cv/types";
    view settings stay in localStorage either way: they hold no CV.
 
    Both stores can be missing (some private windows), full, or cleared by the
-   browser, so every call is guarded and says what happened. The backup file
-   is the way to keep a copy that outlives the browser's storage. */
+   browser, so every call is guarded and says what happened (kv.ts). The backup
+   file is the way to keep a copy that outlives the browser's storage. */
 
-const KEYS = {
-  cvs: "cv-editor.v1.cvs",
-  photo: "cv-editor.v1.photo",
-  ui: "cv-editor.v1.ui",
-  tabOnly: "cv-editor.v1.tab-only",
-} as const;
-
-export type WriteResult = { ok: true } | { ok: false; reason: "full" | "unavailable" };
-
-export interface Ui {
-  openId?: string;
-  theme?: "light" | "dark";
-  zoom?: "fit" | "actual";
-  /** Set when the CV list is folded away. */
-  library?: "collapsed";
-}
-
-type Area = "local" | "session";
-
-function store(area: Area): Storage {
-  return area === "local" ? window.localStorage : window.sessionStorage;
-}
-
-function read(key: string, area: Area = "local"): unknown {
-  try {
-    const text = store(area).getItem(key);
-    return text ? JSON.parse(text) : null;
-  } catch {
-    return null;
-  }
-}
-
-function write(key: string, value: unknown, area: Area = "local"): WriteResult {
-  try {
-    if (value === null) store(area).removeItem(key);
-    else store(area).setItem(key, JSON.stringify(value));
-    return { ok: true };
-  } catch (error) {
-    const name = error instanceof DOMException ? error.name : "";
-    const full = name === "QuotaExceededError" || name === "NS_ERROR_DOM_QUOTA_REACHED";
-    return { ok: false, reason: full ? "full" : "unavailable" };
-  }
-}
+export type { WriteResult } from "./kv";
+export { loadUi, saveUi, type Ui } from "./ui-prefs";
 
 /** True when this tab keeps its CVs to itself and forgets them when it closes. */
 export function isTabOnly(): boolean {
@@ -111,20 +73,6 @@ function putPhoto(photo: Photo | null, area: Area): WriteResult & { dropped?: bo
   if (result.ok || !photo?.source || result.reason !== "full") return result;
   const lean = write(KEYS.photo, { src: photo.src }, area);
   return lean.ok ? { ok: true, dropped: true } : lean;
-}
-
-export function loadUi(): Ui {
-  const value = read(KEYS.ui);
-  return value && typeof value === "object" ? (value as Ui) : {};
-}
-
-/** Merges a change into the saved view settings. */
-export function saveUi(change: Partial<Ui>): void {
-  const next = { ...loadUi(), ...change };
-  for (const key of Object.keys(next) as (keyof Ui)[]) {
-    if (next[key] === undefined) delete next[key];
-  }
-  write(KEYS.ui, next);
 }
 
 /** Tells `onChange` when another tab of the editor writes the CVs or photo.
@@ -201,19 +149,20 @@ export interface Restored {
   photo: Photo | null;
 }
 
-/** Reads a backup file. Throws with a message fit to show when it is not one. */
+/** Reads a backup file. Throws a BackupError, with a message fit to show, when
+    it is not one. */
 export function readBackup(text: string): Restored {
   let value: unknown;
   try {
     value = JSON.parse(text);
   } catch {
-    throw new Error("That file is not a backup from this editor. Backups are .json files.");
+    throw new BackupError("notJson", "That file is not a backup from this editor. Backups are .json files.");
   }
   const record = value as { app?: unknown; cvs?: unknown; photo?: unknown } | null;
   /* A single CV exported by hand is fine too. */
   const list = Array.isArray(record?.cvs) ? record.cvs : record && "sections" in record ? [record] : null;
-  if (!list) throw new Error("That file holds no CVs. Pick a backup this editor saved.");
+  if (!list) throw new BackupError("noCvs", "That file holds no CVs. Pick a backup this editor saved.");
   const cvs = list.map(readCv).filter((cv): cv is Cv => cv !== null);
-  if (!cvs.length) throw new Error("The editor could not read any CV in that file.");
+  if (!cvs.length) throw new BackupError("unreadable", "The editor could not read any CV in that file.");
   return { cvs, photo: readPhoto(record?.photo) };
 }

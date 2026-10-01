@@ -4,7 +4,9 @@ import type { Cv } from "@/lib/cv/types";
 import type { Ui } from "@/lib/storage";
 import CvMenu from "./CvMenu";
 import DownloadMenu, { type PdfControls } from "./DownloadMenu";
+import { useT } from "./i18n";
 import { Icon, Mark } from "./icons";
+import LanguageMenu from "./LanguageMenu";
 import SettingsMenu from "./SettingsMenu";
 import StyleMenu from "./StyleMenu";
 import type { Update } from "./types";
@@ -50,21 +52,22 @@ export default function TopBar({
   onBackup: () => void;
   onRestore: (file: File) => void;
 }) {
+  const t = useT();
   /* Everything saves as you type, so a plain save needs one word. Only the tab
      that forgets says where, and a failure says why. */
   const savedText = saved.ok
     ? tabOnly
-      ? "Saved in this tab"
-      : "Saved"
+      ? t.bar.savedInTab
+      : t.bar.saved
     : saved.reason === "full"
-      ? "Not saved: storage is full"
-      : "Not saved: this browser blocks storage";
+      ? t.bar.notSavedFull
+      : t.bar.notSavedBlocked;
 
   return (
     <header className="topbar">
       <h1 className="brand">
         <Mark />
-        <span className="brand-name">
+        <span className="brand-name" translate="no">
           <span className="brand-cv">CV</span> Editor
         </span>
       </h1>
@@ -86,6 +89,7 @@ export default function TopBar({
           <span className="saved-text">{savedText}</span>
         </span>
         {cv && <StyleMenu cv={cv} update={update} />}
+        <LanguageMenu label={t.language.label} />
         <SettingsMenu
           ui={ui}
           onUi={onUi}

@@ -4,11 +4,11 @@ import type { Cv } from "./types";
 /* The CV a first visit opens: a made-up person, so every part of the editor
    has something in it. The companies are invented and every address is on
    example.com, which is reserved for examples. */
-export function sampleCv(): Cv {
+export function sampleCv(title = "Sample CV"): Cv {
   const now = Date.now();
   return {
     id: uid(),
-    title: "Sample CV",
+    title,
     createdAt: now,
     updatedAt: now,
     sample: true,

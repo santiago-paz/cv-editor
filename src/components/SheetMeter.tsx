@@ -1,6 +1,7 @@
 "use client";
 
 import type { Template } from "@/lib/cv/templates";
+import { useT } from "./i18n";
 import type { Measure } from "./Stage";
 import { Icon } from "./icons";
 import { Popover } from "./ui/Popover";
@@ -20,11 +21,12 @@ export default function SheetMeter({
   template: Template;
   example: boolean;
 }) {
+  const t = useT();
   if (example) {
     return (
       <div className="meter-pill example" role="status">
         <span className="dot" aria-hidden="true" />
-        Example. Your CV appears here as you type.
+        {t.meter.example}
       </div>
     );
   }
@@ -37,20 +39,26 @@ export default function SheetMeter({
   const tone = !measure ? "idle" : over ? "bad" : measure.stranded || fillTone === "bad" ? "warn" : "ok";
 
   const summary = !measure
-    ? "Measuring…"
+    ? t.meter.measuring
     : over
-      ? `${pages} pages, ${pages - template.pages} over`
+      ? t.meter.over(pages, pages - template.pages)
       : pages === 1
-        ? `1 page, ${fill}% full`
-        : `${pages} pages, last ${fill}% full`;
+        ? t.meter.one(fill)
+        : t.meter.many(pages, fill);
 
   /* Said aloud only when the page count changes, not with every keystroke that
      moves the percentage. */
-  const spoken = !measure ? "" : over ? `${pages} pages, ${pages - template.pages} over` : pages === 1 ? "1 page" : `${pages} pages`;
+  const spoken = !measure
+    ? ""
+    : over
+      ? t.meter.over(pages, pages - template.pages)
+      : pages === 1
+        ? t.meter.spokenOne
+        : t.meter.spokenMany(pages);
 
   return (
     <Popover
-      label="Page details"
+      label={t.meter.label}
       className="menu-meter"
       trigger={({ toggle, ref, open, panelId }) => (
         <>
@@ -76,15 +84,17 @@ export default function SheetMeter({
       {() => (
         <>
           <div className="meter-row">
-            <span>Pages</span>
-            <b className={over ? "bad" : "ok"}>{measure ? (over ? `${pages}, over by ${pages - template.pages}` : pages) : "-"}</b>
+            <span>{t.meter.pages}</span>
+            <b className={over ? "bad" : "ok"}>{measure ? (over ? t.meter.overBy(pages, pages - template.pages) : pages) : "-"}</b>
           </div>
           <p className="menu-note">
-            {template.name} is meant for {template.pages === 1 ? "one page" : `up to ${template.pages} pages`}.
+            {template.pages === 1
+              ? t.meter.meantForOne(t.templates[template.id].name)
+              : t.meter.meantForUpTo(t.templates[template.id].name, template.pages)}
           </p>
           <div className="meter-row">
-            <span>{measure ? `Page ${pages}` : "Last page"}</span>
-            <b className={fillTone}>{measure ? `${fill}% full` : "-"}</b>
+            <span>{measure ? t.meter.page(pages) : t.meter.lastPage}</span>
+            <b className={fillTone}>{measure ? t.meter.full(fill) : "-"}</b>
           </div>
           <div className={"bar " + fillTone} aria-hidden="true">
             <i style={{ transform: `scaleX(${Math.min(1, fill / 100)})` }} />
@@ -92,15 +102,13 @@ export default function SheetMeter({
           {measure && pages > 1 && (
             <>
               <div className="meter-row">
-                <span>Empty at a cut</span>
-                <b className={wasteTone}>{measure.worstDead < 1 ? "none" : `${Math.round(measure.worstDead)}\u00a0mm`}</b>
+                <span>{t.meter.emptyAtCut}</span>
+                <b className={wasteTone}>{measure.worstDead < 1 ? t.meter.none : t.meter.mm(Math.round(measure.worstDead))}</b>
               </div>
-              <p className="menu-note">Paper left empty at the foot of a page because the next entry did not fit.</p>
+              <p className="menu-note">{t.meter.emptyNote}</p>
             </>
           )}
-          {measure?.stranded && (
-            <p className="menu-note warn">A heading ends a page with nothing under it. Look for the amber mark on the sheet.</p>
-          )}
+          {measure?.stranded && <p className="menu-note warn">{t.meter.stranded}</p>}
         </>
       )}
     </Popover>

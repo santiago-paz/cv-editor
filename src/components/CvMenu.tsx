@@ -1,9 +1,12 @@
 "use client";
 
 import { cvLabel } from "@/lib/cv/blank";
-import { TEMPLATES } from "@/lib/cv/templates";
+import { UNTITLED } from "@/lib/cv/defaults";
 import type { Cv } from "@/lib/cv/types";
+import { LANG_TAGS, type Lang } from "@/lib/i18n";
+import type { Dict } from "@/lib/i18n/en";
 import { AUTHOR, DONATE_URL } from "@/lib/site";
+import { useLang, useT } from "./i18n";
 import { Icon } from "./icons";
 import { IconButton } from "./ui/bits";
 import { Popover } from "./ui/Popover";
@@ -13,19 +16,20 @@ import { Popover } from "./ui/Popover";
    one. The credit and the Donate link sit at the foot, where the old left rail
    kept them. */
 
-const SHORT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+const shortDates: Partial<Record<Lang, Intl.DateTimeFormat>> = {};
+const shortDate = (lang: Lang) => (shortDates[lang] ??= new Intl.DateTimeFormat(LANG_TAGS[lang], { day: "numeric", month: "short" }));
 
 /** "just now", "5 min ago", "3 h ago", "2 d ago", then the date. */
-export function ago(time: number, now = Date.now()): string {
+export function ago(time: number, t: Dict["cvs"], lang: Lang, now = Date.now()): string {
   const seconds = Math.max(0, Math.round((now - time) / 1000));
-  if (seconds < 60) return "just now";
+  if (seconds < 60) return t.justNow;
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return t.minutesAgo(minutes);
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
+  if (hours < 24) return t.hoursAgo(hours);
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days} d ago`;
-  return SHORT.format(time);
+  if (days < 7) return t.daysAgo(days);
+  return shortDate(lang).format(time);
 }
 
 export default function CvMenu({
@@ -47,12 +51,15 @@ export default function CvMenu({
   onDelete: (id: string) => void;
   onRename: (title: string) => void;
 }) {
+  const t = useT();
+  const lang = useLang();
   const open = cvs.find(cv => cv.id === openId) ?? null;
   const sorted = [...cvs].sort((a, b) => b.updatedAt - a.updatedAt);
+  const label = (cv: Cv) => cvLabel(cv, t.cvs.untitled);
 
   return (
     <Popover
-      label="Your CVs"
+      label={t.cvs.label}
       className="menu-cvs"
       trigger={({ toggle, ref, open: shown, panelId }) => (
         <button
@@ -64,7 +71,7 @@ export default function CvMenu({
           aria-controls={shown ? panelId : undefined}
           onClick={toggle}
         >
-          <span className="cvname-text">{open ? cvLabel(open) : "Your CVs"}</span>
+          <span className="cvname-text">{open ? label(open) : t.cvs.label}</span>
           <Icon name="down" size={14} />
         </button>
       )}
@@ -74,30 +81,30 @@ export default function CvMenu({
           {open && (
             <div className="menu-block">
               <label className="menu-label" htmlFor="cv-rename">
-                Name of this CV
+                {t.cvs.nameLabel}
               </label>
               <input
                 id="cv-rename"
                 className="plain-input"
-                value={open.title === "Untitled CV" ? "" : open.title}
-                placeholder={cvLabel(open)}
+                value={open.title === UNTITLED ? "" : open.title}
+                placeholder={label(open)}
                 spellCheck={false}
                 autoComplete="off"
                 onChange={event => onRename(event.target.value)}
                 onBlur={() => {
-                  if (!open.title.trim()) onRename("Untitled CV");
+                  if (!open.title.trim()) onRename(UNTITLED);
                 }}
                 onKeyDown={event => {
                   if (event.key === "Enter") close();
                 }}
               />
-              <p className="menu-note">Only you see this name. It is never printed. Leave it empty to use your own name.</p>
+              <p className="menu-note">{t.cvs.nameNote}</p>
             </div>
           )}
 
           <div className="menu-block tight">
             <div className="menu-head">
-              <h3 className="menu-label">Your CVs</h3>
+              <h3 className="menu-label">{t.cvs.label}</h3>
               <span className="menu-count">{cvs.length}</span>
             </div>
             <ul className="cv-list">
@@ -113,16 +120,16 @@ export default function CvMenu({
                       close();
                     }}
                   >
-                    <span className="cv-title">{cvLabel(cv)}</span>
+                    <span className="cv-title">{label(cv)}</span>
                     <span className="cv-meta">
-                      {cv.sample ? "Sample · " : ""}
-                      {TEMPLATES[cv.template].name} · {ago(cv.updatedAt)}
+                      {cv.sample ? `${t.cvs.sample} · ` : ""}
+                      {t.templates[cv.template].name} · {ago(cv.updatedAt, t.cvs, lang)}
                     </span>
                     {cv.id === openId && <Icon name="check" size={15} />}
                   </button>
                   <span className="cv-actions">
-                    <IconButton icon="copy" label={`Make a copy of ${cvLabel(cv)}`} onClick={() => onDuplicate(cv.id)} />
-                    <IconButton icon="trash" label={`Delete ${cvLabel(cv)}`} danger onClick={() => onDelete(cv.id)} />
+                    <IconButton icon="copy" label={t.cvs.copyOf(label(cv))} onClick={() => onDuplicate(cv.id)} />
+                    <IconButton icon="trash" label={t.cvs.deleteOf(label(cv))} danger onClick={() => onDelete(cv.id)} />
                   </span>
                 </li>
               ))}
@@ -137,7 +144,7 @@ export default function CvMenu({
                 }}
               >
                 <Icon name="plus" />
-                New CV
+                {t.cvs.new}
               </button>
               <button
                 type="button"
@@ -147,18 +154,18 @@ export default function CvMenu({
                   close();
                 }}
               >
-                Try the sample
+                {t.cvs.trySample}
               </button>
             </div>
           </div>
 
           <p className="colophon">
             <span>
-              Made by{" "}
+              {t.cvs.madeBy}{" "}
               {AUTHOR.url ? (
                 <a href={AUTHOR.url} target="_blank" rel="noopener">
                   {AUTHOR.name}
-                  <span className="sr-only"> (opens in a new tab)</span>
+                  <span className="sr-only">{t.common.newTab}</span>
                 </a>
               ) : (
                 AUTHOR.name
@@ -167,8 +174,8 @@ export default function CvMenu({
             {DONATE_URL && (
               <a className="donate" href={DONATE_URL} target="_blank" rel="noopener">
                 <Icon name="heart" size={13} />
-                Donate
-                <span className="sr-only"> with PayPal (opens in a new tab)</span>
+                {t.cvs.donate}
+                <span className="sr-only">{t.cvs.donateVia}</span>
               </a>
             )}
           </p>

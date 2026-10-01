@@ -50,6 +50,9 @@ pill at the foot of the preview says how full the last page is.
   computer. The CVs and photo then live in the tab's sessionStorage.
 - Bold, italics and links in the summary and bullets. Pasted text arrives as
   plain text.
+- The editor speaks Spanish, English, German and Portuguese. A globe button in
+  the top bar switches it. This is the editor's own language, apart from the
+  CV's.
 - Light and dark themes, and a layout that works on a phone.
 
 ## Typing a CV
@@ -84,6 +87,45 @@ Matching ignores case and accents, takes the letters in any order, and knows
 initials. `tests/suggest-data.test.ts` checks every list, so a new entry that
 breaks a rule fails the test. `src/lib/suggest/catalog.ts` builds the indexes the
 first time a language is used.
+
+## The editor's languages
+
+The editor speaks Spanish, English, German and Portuguese (Brazilian). The first
+visit follows the browser's language, and English is the fallback. The globe
+button in the top bar, and on the privacy and terms pages, switches it, and the
+choice is saved in this browser with the theme and the zoom.
+
+This is not the CV's language. The Style menu sets that one, and it decides the
+headings a CV prints and what the boxes suggest. The editor's language only
+changes the buttons, menus and messages, so a person can write an English CV
+in a German editor.
+
+Every line the editor says lives in `src/lib/i18n/en.tsx`. `es.tsx`, `de.tsx`
+and `pt.tsx` are written against it, so a line missing from one of them stops
+`npm run typecheck`. A line is a string, or a function when it takes a name or
+a number, and each language writes its own plurals inside it. Components never
+hold a sentence of their own: they read `useT()`. Only the language on screen is
+downloaded.
+
+`<html lang>` holds the language. A script in the page head sets it before the
+first paint, so there is no flash of the wrong one, and `src/lib/i18n/store.ts`
+changes it and saves the choice. The privacy and terms pages hold all four
+languages, one file each in `src/lib/i18n/legal/`, and the style sheet shows the
+one that `<html lang>` names. Change the four files together: a test counts the
+headings, lists and links of each against the English.
+
+The server's refusals carry a code beside their English text
+(`src/lib/errors.ts`), and the browser says them in the editor's language. The
+English stays as the fallback for a code the page does not know.
+
+To add a language:
+
+1. Add it to `LANGS`, `LANG_NAMES` and `LANG_TAGS` in `src/lib/i18n/index.ts`.
+2. Write its dictionary and its legal text, and add them to `loaders` in
+   `src/lib/i18n/load.ts` and to `LEGAL` in `src/lib/i18n/legal/index.ts`.
+3. Add its word for "copy" to `COPY_WORDS` in `src/lib/cv/defaults.ts`.
+
+`npm test` then tells you what is missing.
 
 ## How the PDF is made
 
@@ -257,8 +299,10 @@ The tests cover the sanitizer (browser and server must agree), the templates'
 escaping, the checks that repair an imported backup, storage, the page math,
 what the AI button may send, how its reply gets cleaned and how its changes are
 marked, what the editor says when the server won't make a PDF, how the print
-dialog opens and cleans up, and the suggestions: every list, the matching, the
-dates, the job families and the sources each box reads.
+dialog opens and cleans up, the four languages (every line translated, no name
+or number dropped, and the privacy and terms pages saying the same things in
+each), and the suggestions: every list, the matching, the dates, the job
+families and the sources each box reads.
 Two of them start Chrome: one prints CVs, reads the text back with `pdftotext`
 and checks that no browser header or footer lands on the page, and one checks
 that the preview's page breaks land where the PDF breaks. Both skip themselves
@@ -280,7 +324,11 @@ npm run typecheck
 | `src/lib/cv/templates/` | The two templates: their print stylesheets and markup |
 | `src/lib/paginate.ts` | Where Chrome will break the pages |
 | `src/lib/measure.ts` | Reads the preview's layout for that math |
-| `src/lib/storage.ts` | localStorage, the tab that forgets its CVs, and backups |
+| `src/lib/storage.ts` | The CVs and the photo in localStorage, the tab that forgets them, and backups |
+| `src/lib/kv.ts`, `src/lib/ui-prefs.ts` | The guarded reads and writes of the browser's storage, and the view settings (theme, zoom, language) |
+| `src/lib/i18n/` | The editor's words in four languages, language detection, and the server's refusals in words |
+| `src/lib/i18n/legal/` | The privacy page and the terms, one file for each language |
+| `src/lib/errors.ts` | The codes the server's refusals carry |
 | `src/lib/site.ts` | The Donate and author links |
 | `src/lib/download.ts` | The two ways to get the PDF: the print dialog and the file from the server |
 | `src/lib/suggest/` | The suggestion engine: ranking, dates, history, the catalogs and what each box reads |
@@ -294,7 +342,7 @@ npm run typecheck
 | `src/app/api/pdf/route.ts` | The PDF route |
 | `src/app/api/ai/` | The AI routes: rewrite, accept, usage |
 | `src/app/api/auth/` | Sign-in, handled by Better Auth |
-| `src/app/privacy/`, `src/app/terms/` | The privacy page and the terms |
+| `src/app/privacy/`, `src/app/terms/` | The routes of the privacy page and the terms. Their text is in `src/lib/i18n/legal/` |
 | `src/components/` | The editor: top bar, panel, stage, menus |
 | `src/components/DownloadMenu.tsx` | The PDF button and the menu that explains its two ways |
 | `src/components/steps/` | One file per kind of step: About you, jobs, skills, languages, summary |

@@ -1,15 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { section as newSection } from "@/lib/cv/defaults";
 import type { Cv, Section } from "@/lib/cv/types";
 import { textOf } from "@/lib/html";
+import type { Dict } from "@/lib/i18n/en";
 import { SECTION_CHOICES, type SectionChoice } from "@/lib/suggest/data/misc";
 import { fold } from "@/lib/suggest/text";
 import DownloadMenu, { type PdfControls } from "./DownloadMenu";
+import { useT } from "./i18n";
 import { Icon, Key } from "./icons";
+import { LegalLink } from "./LegalLink";
 import { LanguagesStep } from "./steps/Languages";
 import { SectionStep } from "./steps/Sections";
 import { SkillsStep } from "./steps/Skills";
@@ -52,15 +54,15 @@ function filled(section: Section): boolean {
   }
 }
 
-export function stepsOf(cv: Cv): StepDef[] {
+export function stepsOf(cv: Cv, t: Dict["panel"]): StepDef[] {
   return [
-    { id: "you", label: "You", done: !!(cv.person.name.trim() || cv.person.role.trim()) },
+    { id: "you", label: t.you, done: !!(cv.person.name.trim() || cv.person.role.trim()) },
     ...cv.sections.map(
-      (section): StepDef => ({ id: `s:${section.id}`, label: section.title.trim() || "Untitled", done: filled(section) }),
+      (section): StepDef => ({ id: `s:${section.id}`, label: section.title.trim() || t.untitled, done: filled(section) }),
     ),
-    { id: "skills", label: "Skills", done: cv.skills.some(item => item.text.trim()) },
-    { id: "languages", label: "Languages", done: cv.languages.some(item => item.name.trim()) },
-    { id: "summary", label: "Summary", done: !!textOf(cv.summary) },
+    { id: "skills", label: t.skills, done: cv.skills.some(item => item.text.trim()) },
+    { id: "languages", label: t.languages, done: cv.languages.some(item => item.name.trim()) },
+    { id: "summary", label: t.summary, done: !!textOf(cv.summary) },
   ];
 }
 
@@ -103,7 +105,8 @@ export default function Panel({
   /** Starts a blank CV, offered when the open one is the sample. */
   onNew: () => void;
 }) {
-  const steps = stepsOf(cv);
+  const t = useT();
+  const steps = stepsOf(cv, t.panel);
   const at = Math.max(0, steps.findIndex(item => item.id === step));
   const current = steps[at];
   const next = steps[at + 1];
@@ -182,12 +185,12 @@ export default function Panel({
 
   const sectionAt = cv.sections.findIndex(item => `s:${item.id}` === current.id);
   const currentSection = sectionAt >= 0 ? cv.sections[sectionAt] : null;
-  const mod = isMac() ? "⌘" : "Ctrl";
+  const mod = isMac() ? "⌘" : t.common.ctrl;
 
   return (
     <section
       className="write"
-      aria-label="Write your CV"
+      aria-label={t.editor.writeLabel}
       onFocusCapture={event => {
         const path = (event.target as HTMLElement).closest<HTMLElement>("[data-field]")?.dataset.field;
         if (path) onFocusPath(path);
@@ -204,17 +207,17 @@ export default function Panel({
     >
       {cv.sample && (
         <p className="sample-note">
-          This is a sample. Type over it, or{" "}
-          <button type="button" className="text-button inline" onClick={onNew}>
-            start your own CV
-          </button>
-          .
+          {t.panel.sampleNote(
+            <button type="button" className="text-button inline" onClick={onNew}>
+              {t.panel.startOwn}
+            </button>,
+          )}
         </p>
       )}
 
       <div className="steps">
         <div className="steps-scroll" ref={tabs}>
-          <div className="steps-list" role="tablist" aria-label="Parts of the CV">
+          <div className="steps-list" role="tablist" aria-label={t.panel.parts}>
             {steps.map((item, index) => (
               <button
                 key={item.id}
@@ -230,13 +233,13 @@ export default function Panel({
                 onKeyDown={event => onTabKey(event, index)}
               >
                 <span className="step-label">{item.label}</span>
-                {item.done && <span className="sr-only"> (filled in)</span>}
+                {item.done && <span className="sr-only">{t.panel.filledIn}</span>}
               </button>
             ))}
           </div>
         </div>
         <Popover
-          label="Add a section"
+          label={t.panel.addSection}
           align="end"
           menu
           className="menu-wide"
@@ -245,8 +248,8 @@ export default function Panel({
               ref={ref}
               type="button"
               className="steps-add"
-              title="Add a section"
-              aria-label="Add a section"
+              title={t.panel.addSection}
+              aria-label={t.panel.addSection}
               aria-haspopup="menu"
               aria-expanded={open}
               aria-controls={open ? panelId : undefined}
@@ -261,7 +264,7 @@ export default function Panel({
               choices.map(choice => (
                 <MenuItem
                   key={choice.title}
-                  hint={choice.hint}
+                  hint={t.panel.hints[choice.preset]}
                   onClick={() => {
                     close();
                     addSection(choice);
@@ -271,7 +274,7 @@ export default function Panel({
                 </MenuItem>
               ))
             ) : (
-              <p className="menu-note">Every kind of section is already on the CV.</p>
+              <p className="menu-note">{t.panel.allSections}</p>
             )
           }
         </Popover>
@@ -298,9 +301,7 @@ export default function Panel({
         <div className="nav-row">
           {next ? (
             <button ref={nextButton} type="button" className="btn primary" onClick={() => go(next.id, true)}>
-              <span>
-                Next: <b>{next.label}</b>
-              </span>
+              <span>{t.panel.next(next.label)}</span>
               <span className="keys">
                 <Key>{mod}</Key>
                 <Key>↵</Key>
@@ -312,22 +313,16 @@ export default function Panel({
           {at > 0 && (
             <button type="button" className="btn quiet back" onClick={() => go(steps[at - 1].id, true)}>
               <Icon name="arrowLeft" />
-              <span>Back</span>
+              <span>{t.common.back}</span>
             </button>
           )}
         </div>
         {/* Said where the PDF button is, because the PDF file download is what sends a whole CV to a server. */}
         <p className="nav-note">
-          Save as PDF stays on your device. The PDF file download and AI rewrites run on servers in the US.{" "}
-          <Link href="/privacy" target="_blank" rel="noopener">
-            Privacy
-            <span className="sr-only"> (opens in a new tab)</span>
-          </Link>
-          <span aria-hidden="true"> · </span>
-          <Link href="/terms" target="_blank" rel="noopener">
-            Terms
-            <span className="sr-only"> (opens in a new tab)</span>
-          </Link>
+          {t.panel.serversNote(
+            <LegalLink page="privacy">{t.settings.privacy}</LegalLink>,
+            <LegalLink page="terms">{t.settings.terms}</LegalLink>,
+          )}
         </p>
       </footer>
     </section>

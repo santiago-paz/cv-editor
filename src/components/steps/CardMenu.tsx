@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "../i18n";
 import { Icon } from "../icons";
 import { MenuItem } from "../ui/bits";
 import { Popover } from "../ui/Popover";
@@ -18,9 +19,10 @@ export function CardMenu({
   onShift: (to: number) => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   return (
     <Popover
-      label={`Options for ${name}`}
+      label={t.card.options(name)}
       align="end"
       menu
       trigger={({ toggle, ref, open, panelId }) => (
@@ -28,7 +30,7 @@ export function CardMenu({
           ref={ref}
           type="button"
           className="iconbtn"
-          aria-label={`Options for ${name}`}
+          aria-label={t.card.options(name)}
           aria-haspopup="menu"
           aria-expanded={open}
           aria-controls={open ? panelId : undefined}
@@ -48,7 +50,7 @@ export function CardMenu({
               close();
             }}
           >
-            Move up
+            {t.card.moveUp}
           </MenuItem>
           <MenuItem
             icon="arrowDown"
@@ -58,7 +60,7 @@ export function CardMenu({
               close();
             }}
           >
-            Move down
+            {t.card.moveDown}
           </MenuItem>
           <MenuItem
             icon="trash"
@@ -68,7 +70,7 @@ export function CardMenu({
               onDelete();
             }}
           >
-            Delete
+            {t.common.delete}
           </MenuItem>
         </>
       )}

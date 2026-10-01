@@ -3,6 +3,7 @@
 import { skill } from "@/lib/cv/defaults";
 import type { Cv } from "@/lib/cv/types";
 import { fold } from "@/lib/suggest/text";
+import { useT } from "../i18n";
 import { Icon } from "../icons";
 import { useSuggest } from "../suggest-context";
 import type { Say, Update } from "../types";
@@ -16,6 +17,7 @@ export const SKILL_CAP = 10;
    below, one click each. */
 
 export function SkillsStep({ cv, update, say }: { cv: Cv; update: Update; say: Say }) {
+  const t = useT();
   const suggest = useSuggest();
   const sidebar = cv.template === "sidebar";
   // Rows left empty by an older version of the editor are not shown as chips.
@@ -40,7 +42,7 @@ export function SkillsStep({ cv, update, say }: { cv: Cv; update: Update; say: S
       const at = draft.skills.findIndex(item => item.id === gone.id);
       if (at > -1) draft.skills.splice(at, 1);
     });
-    say(`Removed “${gone.text}”.`, () =>
+    say(t.skills.removed(gone.text), () =>
       update(draft => {
         draft.skills.splice(Math.min(cv.skills.findIndex(item => item.id === gone.id), draft.skills.length), 0, gone);
       }),
@@ -65,7 +67,7 @@ export function SkillsStep({ cv, update, say }: { cv: Cv; update: Update; say: S
     update(draft => {
       draft.skills = draft.skills.filter(item => !item.text.trim() || keep.has(item.id));
     });
-    say(`Took ${cut.length} ${cut.length === 1 ? "skill" : "skills"} off the end.`, () =>
+    say(t.skills.cut(cut.length), () =>
       update(draft => {
         draft.skills.push(...cut);
       }),
@@ -75,12 +77,8 @@ export function SkillsStep({ cv, update, say }: { cv: Cv; update: Update; say: S
   return (
     <>
       <header className="pane-head">
-        <h2 className="pane-title">Your skills</h2>
-        <p className="pane-help">
-          {sidebar
-            ? `The sidebar fits ${SKILL_CAP}. Put the ones the job asks for first.`
-            : "Classic prints them as one line under your summary."}
-        </p>
+        <h2 className="pane-title">{t.skills.title}</h2>
+        <p className="pane-help">{sidebar ? t.skills.helpSidebar(SKILL_CAP) : t.skills.helpClassic}</p>
       </header>
 
       <TokenInput
@@ -89,8 +87,8 @@ export function SkillsStep({ cv, update, say }: { cv: Cv; update: Update; say: S
         onRemove={remove}
         onMove={moveChip}
         suggest={query => suggest.skill(query, have)}
-        label="Skills"
-        placeholder="Type a skill, then Enter"
+        label={t.skills.label}
+        placeholder={t.skills.placeholder}
         field="skills"
         chipField={chip => `skills.${chip.id}`}
         over={sidebar ? SKILL_CAP : Number.POSITIVE_INFINITY}
@@ -98,12 +96,12 @@ export function SkillsStep({ cv, update, say }: { cv: Cv; update: Update; say: S
 
       {sidebar && (
         <p className={"count" + (over ? " bad" : "")} aria-live="polite">
-          {shown.length} of {SKILL_CAP} fit on the sidebar
+          {t.skills.count(shown.length, SKILL_CAP)}
           {over && (
             <>
               {" "}
               <button type="button" className="text-button inline" onClick={keepFirst}>
-                Keep the first {SKILL_CAP}
+                {t.skills.keepFirst(SKILL_CAP)}
               </button>
             </>
           )}
@@ -111,8 +109,8 @@ export function SkillsStep({ cv, update, say }: { cv: Cv; update: Update; say: S
       )}
 
       {offered.length > 0 && (
-        <section className="block" aria-label="Suggested skills">
-          <h3 className="block-title">{job ? `Often listed by ${job}` : "Popular skills"}</h3>
+        <section className="block" aria-label={t.skills.suggested}>
+          <h3 className="block-title">{job ? t.skills.oftenListedBy(job) : t.skills.popular}</h3>
           <div className="suggest-chips">
             {offered.map(name => (
               <button key={name} type="button" className="chip-add" tabIndex={-1} onClick={() => add(name)}>

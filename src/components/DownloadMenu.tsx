@@ -2,7 +2,8 @@
 
 import type { Ref } from "react";
 import { inChromium, type PdfWay } from "@/lib/download";
-import { Icon, Key, type IconName } from "./icons";
+import { useT } from "./i18n";
+import { Icon, Key } from "./icons";
 import { Popover } from "./ui/Popover";
 import { modKey } from "./ui/util";
 
@@ -22,23 +23,6 @@ export interface PdfControls {
   onFile: () => void;
 }
 
-const WAYS: Record<PdfWay, { icon: IconName; title: string; hint: string; fact: string; stays: boolean }> = {
-  print: {
-    icon: "print",
-    title: "Save as PDF",
-    hint: "Opens your browser's print dialog. Choose Save as PDF there. The file has no author or keywords.",
-    fact: "Your CV never leaves this device.",
-    stays: true,
-  },
-  file: {
-    icon: "download",
-    title: "Download a PDF file",
-    hint: "You get the file in one click. Our server prints your CV with Chrome and sends the PDF back. The file has your name as author and your skills as keywords.",
-    fact: "Your CV goes to our server. It keeps no copy.",
-    stays: false,
-  },
-};
-
 export default function DownloadMenu({
   pdf,
   disabled,
@@ -50,16 +34,18 @@ export default function DownloadMenu({
   /** Reaches the main button, for the flow that ends on it. */
   buttonRef?: Ref<HTMLButtonElement>;
 }) {
+  const t = useT();
   const { way, busy } = pdf;
   const printing = way === "print";
 
+  const WAYS = {
+    print: { icon: "print", stays: true, ...t.pdf.print },
+    file: { icon: "download", stays: false, ...t.pdf.file },
+  } as const;
+
   /* Printing is only as good as the browser's own print. Phones and tablets
      can print the wrong thing, and browsers other than Chrome are untested. */
-  const caution = !printing
-    ? "Phones and tablets may print the whole page, not just the CV."
-    : inChromium()
-      ? ""
-      : "Page breaks are tested in Chrome. Check them in the dialog's preview.";
+  const caution = !printing ? t.pdf.cautionPhone : inChromium() ? "" : t.pdf.cautionBrowser;
 
   const order: PdfWay[] = printing ? ["print", "file"] : ["file", "print"];
 
@@ -74,32 +60,27 @@ export default function DownloadMenu({
         /* Busy is aria-disabled, not disabled: a disabled button drops the
            keyboard's place, and the person is left at the top of the page. */
         aria-disabled={busy || undefined}
-        aria-label={busy ? "Making the PDF" : printing ? "Save as PDF" : "Download PDF"}
+        aria-label={busy ? t.pdf.making : printing ? t.pdf.print.title : t.pdf.fileLabel}
         aria-keyshortcuts={printing ? "Control+P Meta+P" : undefined}
-        title={
-          busy
-            ? undefined
-            : printing
-              ? "Opens your browser's print dialog. Your CV stays on this device."
-              : "Downloads a PDF file made on our server."
-        }
+        title={busy ? undefined : printing ? t.pdf.printTitle : t.pdf.fileTitle}
       >
         <Icon name="download" />
         {busy ? (
-          <span className="hide-tiny btn-label">Making the PDF…</span>
+          <span className="hide-tiny btn-label">{t.pdf.making}</span>
         ) : printing ? (
           <span className="hide-tiny btn-label">
-            <span className="hide-narrow">Save as </span>PDF
+            <span className="hide-narrow">{t.pdf.printLead}</span>
+            {t.pdf.printWord}
           </span>
         ) : (
-          <span className="hide-tiny btn-label" data-more=" PDF">
-            Download
+          <span className="hide-tiny btn-label" data-more={t.pdf.fileMore}>
+            {t.pdf.fileWord}
           </span>
         )}
       </button>
 
       <Popover
-        label="Ways to get the PDF"
+        label={t.pdf.menuLabel}
         align="end"
         menu
         className="menu-ways"
@@ -108,8 +89,8 @@ export default function DownloadMenu({
             ref={ref}
             type="button"
             className="btn primary split-caret"
-            aria-label="More ways to get the PDF"
-            title="More ways to get the PDF"
+            aria-label={t.pdf.moreLabel}
+            title={t.pdf.moreLabel}
             aria-haspopup="menu"
             aria-expanded={open}
             aria-controls={open ? panelId : undefined}
@@ -139,10 +120,10 @@ export default function DownloadMenu({
                 <span className="menu-text">
                   <span className="way-title">
                     {item.title}
-                    {id === way && <span className="way-tag">Default</span>}
+                    {id === way && <span className="way-tag">{t.pdf.tagDefault}</span>}
                     {id === "print" && (
                       <span className="keys">
-                        <Key>{modKey()}</Key>
+                        <Key>{modKey() === "⌘" ? "⌘" : t.common.ctrl}</Key>
                         <Key>P</Key>
                       </span>
                     )}

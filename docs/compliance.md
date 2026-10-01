@@ -27,7 +27,7 @@ and for anyone who takes it over. It is a checklist, not legal advice.
 | Duty | Where |
 | --- | --- |
 | Name the person responsible, with an address (Ley 25.326, art. 6) | Privacy page, "Who runs this". `src/lib/operator.ts`. The address comes from `OPERATOR_ADDRESS`. |
-| Say what is kept, why, for how long, and who gets it | `src/app/privacy/page.tsx` |
+| Say what is kept, why, for how long, and who gets it | `src/lib/i18n/legal/`, one file for each language. The English one is the reference, and `src/app/privacy/page.tsx` only shows them. |
 | Print the AAIP notice about access rights | Privacy page, "Your rights" |
 | Tell people before data leaves their browser | The note under the Next button in `Panel.tsx`, and the notes beside the Google buttons in `Account.tsx` and `Improve.tsx` |
 | Consent to processing in the United States | The same notes, and the privacy page |
@@ -38,7 +38,8 @@ and for anyone who takes it over. It is a checklist, not legal advice.
 | Sessions last 7 days | `session.expiresIn` in `src/lib/server/auth.ts`, from `KEEP.sessionDays` |
 
 The privacy page prints the windows from `keep.ts`, so the page and the code cannot drift.
-When you change how data is kept, change the page in the same commit.
+When you change how data is kept, change the page in the same commit, in all four languages
+(`tests/i18n.test.ts` checks that the sections, links and numbers match the English).
 
 ## Record of processing
 

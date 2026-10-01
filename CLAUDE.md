@@ -43,6 +43,11 @@ Rules that keep the editor fast and in one style:
 - Colors, type and the marker come from the tokens at the top of
   `src/app/globals.css`, defined once for light and dark with `light-dark()`.
   Use a token, not a new hex value.
+- The editor speaks Spanish, English, German and Portuguese, apart from the
+  CV's own language. Every word it says lives in `src/lib/i18n/en.tsx` and is
+  translated in `es.tsx`, `de.tsx` and `pt.tsx`; components read `useT()` and
+  hold no sentence of their own. The privacy and terms pages are one file per
+  language in `src/lib/i18n/legal/`; change the four together.
 
 Rules the privacy page promises, so the code must keep them:
 

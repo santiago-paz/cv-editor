@@ -4,6 +4,7 @@ import type { KeyboardEvent } from "react";
 import { bullet } from "@/lib/cv/defaults";
 import type { Bullet } from "@/lib/cv/types";
 import { textOf } from "@/lib/html";
+import { useT } from "../i18n";
 import { useSuggest } from "../suggest-context";
 import type { Say } from "../types";
 import { AddButton, IconButton } from "../ui/bits";
@@ -27,9 +28,8 @@ export function BulletsEditor({
   edit,
   say,
   title,
-  first = "What you did",
-  more = "Something else you did",
-  noun = "bullet",
+  first,
+  more,
   improve,
 }: {
   bullets: Bullet[];
@@ -39,12 +39,13 @@ export function BulletsEditor({
   say: Say;
   /** The job title to suggest lines for. Leave out to suggest nothing. */
   title?: string;
+  /** The placeholder of the first bullet, and of the ones after it. */
   first?: string;
   more?: string;
-  noun?: string;
   /** What the AI button tells the model about these bullets. Leave out for no button. */
   improve?: { title: string; dates: string };
 }) {
+  const t = useT();
   const suggest = useSuggest();
   const fieldOf = (id: string) => `[data-field="${path}.${id}"]`;
 
@@ -69,7 +70,7 @@ export function BulletsEditor({
     if (target) changeThenFocus(removal, fieldOf(target.id));
     else removal();
     if (textOf(gone.html)) {
-      say(`Deleted a ${noun}.`, () =>
+      say(t.bullets.deleted, () =>
         edit(list => {
           list.splice(index, 0, gone);
         }),
@@ -122,9 +123,9 @@ export function BulletsEditor({
                       if (target) target.html = html;
                     })
                   }
-                  label={`${noun[0].toUpperCase()}${noun.slice(1)} ${index + 1}`}
+                  label={t.bullets.label(index + 1)}
                   field={`${path}.${item.id}`}
-                  placeholder={index === 0 ? first : more}
+                  placeholder={index === 0 ? (first ?? t.bullets.first) : (more ?? t.bullets.more)}
                   suggest={title === undefined ? undefined : query => suggest.bullet(query, others, title)}
                   onEnter={() => add(index + 1)}
                   onEmptyEnter={() => leave(index)}
@@ -133,7 +134,7 @@ export function BulletsEditor({
                 />
                 <IconButton
                   icon="close"
-                  label={`Delete ${noun} ${index + 1}`}
+                  label={t.bullets.delete(index + 1)}
                   danger
                   className="bullet-x"
                   tabIndex={-1}
@@ -146,7 +147,7 @@ export function BulletsEditor({
       )}
       <div className="block-actions">
         <AddButton flow={false} className="add-quiet" onClick={() => add(bullets.length)}>
-          Add {bullets.length ? `another ${noun}` : `a ${noun}`}
+          {bullets.length ? t.bullets.addAnother : t.bullets.add}
         </AddButton>
         {improve && bullets.some(item => textOf(item.html)) && (
           <Improve

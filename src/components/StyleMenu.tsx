@@ -6,6 +6,7 @@ import { relocalize } from "@/lib/cv/defaults";
 import { LOCALES } from "@/lib/cv/labels";
 import { TEMPLATES, TEMPLATE_ORDER } from "@/lib/cv/templates";
 import type { Cv, Locale, TemplateId } from "@/lib/cv/types";
+import { useT } from "./i18n";
 import { Icon } from "./icons";
 import type { Update } from "./types";
 import { Popover } from "./ui/Popover";
@@ -34,6 +35,7 @@ function Thumb({ id }: { id: TemplateId }) {
 }
 
 export default function StyleMenu({ cv, update }: { cv: Cv; update: Update }) {
+  const t = useT();
   const id = useId();
   const accent = hex(cv.accent) || BAND_COLORS[0].color;
   const preset = BAND_COLORS.find(item => item.color === accent);
@@ -63,9 +65,12 @@ export default function StyleMenu({ cv, update }: { cv: Cv; update: Update }) {
       draft.template = template;
     });
 
+  /* The names in BAND_COLORS are English keys; a color the dictionary does not know keeps its own. */
+  const colorName = (name: string) => (t.style.colors as Record<string, string>)[name] ?? name;
+
   return (
     <Popover
-      label="Style of the CV"
+      label={t.style.label}
       align="end"
       className="menu-style"
       trigger={({ toggle, ref, open, panelId }) => (
@@ -73,14 +78,14 @@ export default function StyleMenu({ cv, update }: { cv: Cv; update: Update }) {
           ref={ref}
           type="button"
           className="btn quiet"
-          aria-label="Style of the CV"
+          aria-label={t.style.label}
           aria-haspopup="dialog"
           aria-expanded={open}
           aria-controls={open ? panelId : undefined}
           onClick={toggle}
         >
           <Icon name="palette" />
-          <span className="hide-narrow">Style</span>
+          <span className="hide-narrow">{t.style.button}</span>
         </button>
       )}
     >
@@ -88,7 +93,7 @@ export default function StyleMenu({ cv, update }: { cv: Cv; update: Update }) {
         <>
           <div className="menu-block">
             <h3 className="menu-label" id={`${id}-layout`}>
-              Layout
+              {t.style.layout}
             </h3>
             <div className="layouts" role="radiogroup" aria-labelledby={`${id}-layout`}>
               {TEMPLATE_ORDER.map(templateId => {
@@ -104,25 +109,25 @@ export default function StyleMenu({ cv, update }: { cv: Cv; update: Update }) {
                       data-autofocus={on || undefined}
                     />
                     <Thumb id={templateId} />
-                    <span className="layout-name">{template.name}</span>
+                    <span className="layout-name">{t.templates[templateId].name}</span>
                     <span className="layout-pages">
-                      {template.pages === 1 ? "1 page" : `Up to ${template.pages} pages`}
+                      {template.pages === 1 ? t.style.onePage : t.style.upToPages(template.pages)}
                     </span>
                   </label>
                 );
               })}
             </div>
-            <p className="menu-note">{TEMPLATES[cv.template].note}</p>
+            <p className="menu-note">{t.templates[cv.template].note}</p>
           </div>
 
           {cv.template === "sidebar" && (
             <div className="menu-block">
               <div className="menu-head">
                 <h3 className="menu-label" id={`${id}-band`}>
-                  Sidebar color
+                  {t.style.sidebarColor}
                 </h3>
                 <span className={"meter " + (low ? "bad" : "ok")} role="status">
-                  {low ? "Text is hard to read" : "Text is easy to read"}
+                  {low ? t.style.hardToRead : t.style.easyToRead}
                 </span>
               </div>
               <div className="swatches" role="group" aria-labelledby={`${id}-band`}>
@@ -132,8 +137,8 @@ export default function StyleMenu({ cv, update }: { cv: Cv; update: Update }) {
                     type="button"
                     className="swatch"
                     aria-pressed={item.color === accent}
-                    aria-label={item.name}
-                    title={item.name}
+                    aria-label={colorName(item.name)}
+                    title={colorName(item.name)}
                     style={{ ["--swatch" as string]: item.color }}
                     onClick={() => setAccent(item.color)}
                   >
@@ -142,20 +147,20 @@ export default function StyleMenu({ cv, update }: { cv: Cv; update: Update }) {
                 ))}
                 <label
                   className={"swatch custom" + (preset ? "" : " on")}
-                  title="Pick any color"
+                  title={t.style.pickAny}
                   style={preset ? undefined : { ["--swatch" as string]: accent }}
                 >
                   <input
                     type="color"
                     value={accent.toLowerCase()}
-                    aria-label="Custom sidebar color"
+                    aria-label={t.style.customColor}
                     onChange={event => setAccent(event.target.value)}
                   />
                   {!preset && <Icon name="check" size={14} />}
                 </label>
               </div>
               <div className="hex">
-                <label htmlFor={`${id}-hex`}>Hex</label>
+                <label htmlFor={`${id}-hex`}>{t.style.hex}</label>
                 <input
                   id={`${id}-hex`}
                   type="text"
@@ -186,16 +191,16 @@ export default function StyleMenu({ cv, update }: { cv: Cv; update: Update }) {
                   }}
                 />
                 <p className={"menu-note" + (bad ? " bad" : "")} id={`${id}-hexnote`}>
-                  {bad ? "Type 6 hex digits, like #1E4A35." : "Applies to this CV only."}
+                  {bad ? t.style.badHex : t.style.thisCvOnly}
                 </p>
               </div>
             </div>
           )}
 
           <div className="menu-block">
-            <h3 className="menu-label">CV language</h3>
+            <h3 className="menu-label">{t.style.cvLanguage}</h3>
             <Segmented<Locale>
-              label="CV language"
+              label={t.style.cvLanguage}
               value={cv.locale}
               onChange={value =>
                 update(draft => {
@@ -204,10 +209,7 @@ export default function StyleMenu({ cv, update }: { cv: Cv; update: Update }) {
               }
               options={LOCALES.map(item => ({ value: item.id, label: item.name }))}
             />
-            <p className="menu-note">
-              Changes the headings the layout prints itself, like Skills and Languages. It also changes the suggestions.
-              Headings you renamed stay as they are.
-            </p>
+            <p className="menu-note">{t.style.cvLanguageNote}</p>
           </div>
         </>
       )}

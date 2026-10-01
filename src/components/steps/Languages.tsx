@@ -3,6 +3,7 @@
 import { language } from "@/lib/cv/defaults";
 import type { Cv } from "@/lib/cv/types";
 import { levelPercent } from "@/lib/suggest/sources";
+import { useT } from "../i18n";
 import { useSuggest } from "../suggest-context";
 import type { Say, Update } from "../types";
 import { AddButton, IconButton } from "../ui/bits";
@@ -21,6 +22,7 @@ const words = (text: string) =>
     .filter(Boolean);
 
 export function LanguagesStep({ cv, update, say }: { cv: Cv; update: Update; say: Say }) {
+  const t = useT();
   const suggest = useSuggest();
   const languages = cv.languages;
   const have = languages.map(item => item.name).filter(Boolean);
@@ -43,7 +45,7 @@ export function LanguagesStep({ cv, update, say }: { cv: Cv; update: Update; say
       draft.languages.splice(index, 1);
     });
     if (gone.name.trim()) {
-      say(`Deleted ${gone.name.trim()}.`, () =>
+      say(t.spoken.deleted(gone.name.trim()), () =>
         update(draft => {
           draft.languages.splice(Math.min(index, draft.languages.length), 0, gone);
         }),
@@ -82,8 +84,8 @@ export function LanguagesStep({ cv, update, say }: { cv: Cv; update: Update; say
   return (
     <>
       <header className="pane-head">
-        <h2 className="pane-title">Languages</h2>
-        <p className="pane-help">Pick the language, then how well you speak it.</p>
+        <h2 className="pane-title">{t.spoken.title}</h2>
+        <p className="pane-help">{t.spoken.help}</p>
       </header>
 
       <div className="rows">
@@ -100,7 +102,7 @@ export function LanguagesStep({ cv, update, say }: { cv: Cv; update: Update; say
               suggest={query => suggest.language(query, have.filter(name => name !== item.name))}
               openOnFocus
               field={`languages.${item.id}`}
-              aria-label={`Language ${index + 1}`}
+              aria-label={t.spoken.language(index + 1)}
               placeholder={suggest.language("", [])[0]?.value ?? "Spanish"}
               onAdvance={input => advanceName(index, input)}
             />
@@ -117,21 +119,21 @@ export function LanguagesStep({ cv, update, say }: { cv: Cv; update: Update; say
               }
               suggest={suggest.level}
               openOnFocus
-              aria-label={`Language ${index + 1}, level`}
+              aria-label={t.spoken.level(index + 1)}
               placeholder={suggest.level("")[0]?.value ?? "Native"}
               onAdvance={input => advanceLevel(index, input)}
             />
-            <IconButton icon="close" label={`Delete language ${index + 1}`} danger tabIndex={-1} onClick={() => remove(index)} />
+            <IconButton icon="close" label={t.spoken.delete(index + 1)} danger tabIndex={-1} onClick={() => remove(index)} />
           </div>
         ))}
         <AddButton flow={false} onClick={() => add(languages.length)}>
-          {languages.length ? "Add another language" : "Add a language"}
+          {languages.length ? t.spoken.addAnother : t.spoken.add}
         </AddButton>
       </div>
 
       <section className="block" aria-labelledby="lang-interests">
         <h3 className="block-title" id="lang-interests">
-          Interests
+          {t.spoken.interests}
         </h3>
         <TokenInput
           chips={interests.map(text => ({ id: text, text }))}
@@ -143,8 +145,8 @@ export function LanguagesStep({ cv, update, say }: { cv: Cv; update: Update; say
             setInterests(next);
           }}
           suggest={query => suggest.hobby(query, interests)}
-          label="Interests"
-          placeholder="Climbing, film photography"
+          label={t.spoken.interests}
+          placeholder={t.spoken.interestsPlaceholder}
           field="hobbies"
         />
       </section>

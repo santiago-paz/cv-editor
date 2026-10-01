@@ -3,6 +3,7 @@
 import { memo, useState } from "react";
 import { project, row } from "@/lib/cv/defaults";
 import type { Cv, Link, Project, ProjectsSection, RowsSection, Section } from "@/lib/cv/types";
+import { useT } from "../i18n";
 import { Icon } from "../icons";
 import { useSuggest } from "../suggest-context";
 import type { Say, Update } from "../types";
@@ -23,16 +24,6 @@ import { textOf } from "@/lib/html";
 /* One section of the CV as a step: its heading, a menu to rename, move or
    delete it, and whatever its entries are. */
 
-const HELP: Record<string, string> = {
-  experience: "Start with your latest job. Type a few letters, then press Enter.",
-  education: "Type your degree or course. Schools and subjects fill in as you type.",
-  projects: "Things you built or ran. Add a link so people can see them.",
-  keySkills: "One line per group, such as Frontend: React, CSS.",
-  awards: "One line each: what it is, then the detail.",
-  highlights: "A plain list of points.",
-  text: "A short paragraph under this heading.",
-};
-
 export function SectionStep({
   cv,
   section,
@@ -46,10 +37,11 @@ export function SectionStep({
   update: Update;
   say: Say;
 }) {
+  const t = useT();
   const suggest = useSuggest();
   const [renaming, setRenaming] = useState(false);
   const sid = section.id;
-  const name = section.title.trim() || "Untitled";
+  const name = section.title.trim() || t.sections.untitled;
 
   function rename(value: string) {
     update(draft => {
@@ -66,14 +58,15 @@ export function SectionStep({
     update(draft => {
       draft.sections.splice(index, 1);
     });
-    say(`Deleted the “${name}” section.`, () =>
+    say(t.sections.deleted(name), () =>
       update(draft => {
         draft.sections.splice(Math.min(index, draft.sections.length), 0, section);
       }),
     );
   }
 
-  const help = HELP[section.preset ?? section.kind] ?? HELP[section.kind] ?? "";
+  const helpFor = (key: string | undefined) => (t.sections.help as Record<string, string>)[key ?? ""] ?? "";
+  const help = helpFor(section.preset ?? section.kind) || helpFor(section.kind);
 
   return (
     <>
@@ -89,7 +82,7 @@ export function SectionStep({
               openOnFocus
               autoFocus
               field={`sections.${sid}.title`}
-              aria-label="Section heading"
+              aria-label={t.sections.headingLabel}
               onAdvance={() => setRenaming(false)}
               onFocus={event => event.currentTarget.select()}
               onBlur={() => setRenaming(false)}
@@ -105,7 +98,7 @@ export function SectionStep({
             </h2>
           )}
           <Popover
-            label={`Options for ${name}`}
+            label={t.sections.optionsFor(name)}
             align="end"
             menu
             trigger={({ toggle, ref, open, panelId }) => (
@@ -113,7 +106,7 @@ export function SectionStep({
                 ref={ref}
                 type="button"
                 className="iconbtn"
-                aria-label={`Options for the ${name} section`}
+                aria-label={t.sections.optionsForSection(name)}
                 aria-haspopup="menu"
                 aria-expanded={open}
                 aria-controls={open ? panelId : undefined}
@@ -132,7 +125,7 @@ export function SectionStep({
                     setRenaming(true);
                   }}
                 >
-                  Rename
+                  {t.sections.rename}
                 </MenuItem>
                 <MenuItem
                   icon="left"
@@ -142,7 +135,7 @@ export function SectionStep({
                     close();
                   }}
                 >
-                  Move earlier on the CV
+                  {t.sections.moveEarlier}
                 </MenuItem>
                 <MenuItem
                   icon="right"
@@ -152,7 +145,7 @@ export function SectionStep({
                     close();
                   }}
                 >
-                  Move later on the CV
+                  {t.sections.moveLater}
                 </MenuItem>
                 <MenuItem
                   icon="trash"
@@ -162,7 +155,7 @@ export function SectionStep({
                     remove();
                   }}
                 >
-                  Delete section
+                  {t.sections.delete}
                 </MenuItem>
               </>
             )}
@@ -177,6 +170,7 @@ export function SectionStep({
 }
 
 function SectionBody({ section, update, say }: { section: Section; update: Update; say: Say }) {
+  const t = useT();
   const suggest = useSuggest();
   const sid = section.id;
   switch (section.kind) {
@@ -212,10 +206,10 @@ function SectionBody({ section, update, say }: { section: Section; update: Updat
                 if (target?.kind === "text") target.html = html;
               })
             }
-            label={section.title || "Paragraph"}
+            label={section.title || t.sections.paragraph}
             field={`sections.${sid}`}
             tall
-            placeholder="Write a short paragraph"
+            placeholder={t.sections.paragraphPlaceholder}
           />
           {textOf(section.html) && (
             <div className="block-actions">
@@ -242,6 +236,7 @@ function SectionBody({ section, update, say }: { section: Section; update: Updat
 /* --------------------------------------------------------------- projects */
 
 function ProjectsEditor({ section, update, say }: { section: ProjectsSection; update: Update; say: Say }) {
+  const t = useT();
   const sid = section.id;
 
   function addProject() {
@@ -261,7 +256,7 @@ function ProjectsEditor({ section, update, say }: { section: ProjectsSection; up
       {section.items.map((item, index) => (
         <ProjectCard key={item.id} sid={sid} item={item} index={index} total={section.items.length} update={update} say={say} />
       ))}
-      <AddButton onClick={addProject}>{section.items.length ? "Add another project" : "Add a project"}</AddButton>
+      <AddButton onClick={addProject}>{section.items.length ? t.sections.addAnotherProject : t.sections.addProject}</AddButton>
     </>
   );
 }
@@ -281,13 +276,14 @@ const ProjectCard = memo(function ProjectCard({
   update: Update;
   say: Say;
 }) {
+  const t = useT();
   const edit = (recipe: (project: Project) => void) =>
     update(draft => {
       const target = inDraft(draft, sid);
       const found = target?.kind === "projects" ? target.items.find(one => one.id === item.id) : undefined;
       if (found) recipe(found);
     });
-  const name = item.name.trim() || "New project";
+  const name = item.name.trim() || t.sections.newProject;
   const path = `sections.${sid}.${item.id}`;
 
   function remove() {
@@ -295,7 +291,7 @@ const ProjectCard = memo(function ProjectCard({
       const target = inDraft(draft, sid);
       if (target?.kind === "projects") target.items.splice(index, 1);
     });
-    say(`Deleted “${name}”.`, () =>
+    say(t.editor.deleted(name), () =>
       update(draft => {
         const target = inDraft(draft, sid);
         if (target?.kind === "projects") target.items.splice(Math.min(index, target.items.length), 0, item);
@@ -317,7 +313,7 @@ const ProjectCard = memo(function ProjectCard({
         <CardMenu name={name} index={index} total={total} onShift={shift} onDelete={remove} />
       </header>
       <div className="fields">
-        <Field label="Project name" htmlFor={`${item.id}-name`}>
+        <Field label={t.sections.projectName} htmlFor={`${item.id}-name`}>
           <Combo
             id={`${item.id}-name`}
             value={item.name}
@@ -328,16 +324,16 @@ const ProjectCard = memo(function ProjectCard({
             }
             field={`${path}.name`}
             placeholder="Tempo"
-            aria-label="Project name"
+            aria-label={t.sections.projectName}
           />
         </Field>
-        <Field label="Links">
+        <Field label={t.sections.projectLinks}>
           <LinksEditor
             links={item.links}
             path={`${path}.links`}
             say={say}
             max={3}
-            addLabel="Add a link"
+            addLabel={t.sections.addLink}
             edit={recipe => edit(one => recipe(one.links as Link[]))}
           />
         </Field>
@@ -347,7 +343,7 @@ const ProjectCard = memo(function ProjectCard({
         path={`${path}.bullets`}
         edit={recipe => edit(one => recipe(one.bullets))}
         say={say}
-        first="What it does, and what you used"
+        first={t.sections.projectFirst}
         improve={{ title: item.name, dates: "" }}
       />
     </article>
@@ -357,6 +353,7 @@ const ProjectCard = memo(function ProjectCard({
 /* ------------------------------------------------------------ labeled lines */
 
 function RowsEditor({ section, update, say }: { section: RowsSection; update: Update; say: Say }) {
+  const t = useT();
   const suggest = useSuggest();
   const sid = section.id;
   const rows = section.rows;
@@ -384,7 +381,7 @@ function RowsEditor({ section, update, say }: { section: RowsSection; update: Up
       list.splice(index, 1);
     });
     if (gone.label.trim() || textOf(gone.html)) {
-      say("Deleted the line.", () =>
+      say(t.sections.lineDeleted, () =>
         edit(list => {
           list.splice(Math.min(index, list.length), 0, gone);
         }),
@@ -398,7 +395,7 @@ function RowsEditor({ section, update, say }: { section: RowsSection; update: Up
         const last = index === rows.length - 1;
         return (
           <div key={item.id} className="row-line" data-row={item.id}>
-            <Field label={index === 0 ? "Label" : ""} className="row-label">
+            <Field label={index === 0 ? t.sections.label : ""} className="row-label">
               <Combo
                 value={item.label}
                 onChange={value =>
@@ -410,10 +407,10 @@ function RowsEditor({ section, update, say }: { section: RowsSection; update: Up
                 suggest={query => suggest.rowLabel(query, section.preset)}
                 openOnFocus
                 placeholder={section.preset === "awards" ? "Certificate" : "Frontend"}
-                aria-label={`Line ${index + 1}, label`}
+                aria-label={t.sections.lineLabel(index + 1)}
               />
             </Field>
-            <Field label={index === 0 ? "Text" : ""} className="row-text">
+            <Field label={index === 0 ? t.sections.text : ""} className="row-text">
               <RichField
                 value={item.html}
                 onChange={html =>
@@ -422,7 +419,7 @@ function RowsEditor({ section, update, say }: { section: RowsSection; update: Up
                     if (target) target.html = html;
                   })
                 }
-                label={`Line ${index + 1}`}
+                label={t.sections.line(index + 1)}
                 field={`sections.${sid}.${item.id}`}
                 placeholder={section.preset === "awards" ? "AWS Certified Developer, 2023" : "React, TypeScript, CSS"}
                 onEnter={() => {
@@ -437,12 +434,12 @@ function RowsEditor({ section, update, say }: { section: RowsSection; update: Up
                 }}
               />
             </Field>
-            <IconButton icon="close" label={`Delete line ${index + 1}`} danger tabIndex={-1} onClick={() => remove(index)} />
+            <IconButton icon="close" label={t.sections.deleteLine(index + 1)} danger tabIndex={-1} onClick={() => remove(index)} />
           </div>
         );
       })}
       <AddButton flow={false} onClick={() => add(rows.length)}>
-        {rows.length ? "Add another line" : "Add a line"}
+        {rows.length ? t.sections.addAnotherLine : t.sections.addLine}
       </AddButton>
     </div>
   );

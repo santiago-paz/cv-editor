@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useT } from "./i18n";
 
 /* The toolbar that floats over selected text in a rich field: bold, italics,
    add a link, remove a link. The same commands are on the keyboard as
@@ -28,6 +29,7 @@ export function linkHref(value: string): string {
 }
 
 export default function RichToolbar() {
+  const t = useT();
   const [place, setPlace] = useState<Place | null>(null);
   const [linking, setLinking] = useState(false);
   const [href, setHref] = useState("");
@@ -124,7 +126,7 @@ export default function RichToolbar() {
     <div
       className="toolbar"
       role="toolbar"
-      aria-label="Text style"
+      aria-label={t.toolbar.label}
       style={{ top: place.top, left: place.left }}
       onMouseDown={event => {
         if (!(event.target instanceof HTMLInputElement)) event.preventDefault();
@@ -142,8 +144,8 @@ export default function RichToolbar() {
             ref={input}
             type="text"
             value={href}
-            placeholder="example.com or name@example.com"
-            aria-label="Link address"
+            placeholder={t.toolbar.addressPlaceholder}
+            aria-label={t.toolbar.address}
             spellCheck={false}
             onChange={event => setHref(event.target.value)}
             onKeyDown={event => {
@@ -154,7 +156,7 @@ export default function RichToolbar() {
               }
             }}
           />
-          <button type="submit">{href.trim() ? "Link" : "Unlink"}</button>
+          <button type="submit">{href.trim() ? t.toolbar.link : t.toolbar.unlink}</button>
           <button
             type="button"
             onClick={() => {
@@ -162,22 +164,22 @@ export default function RichToolbar() {
               closeLink();
             }}
           >
-            Cancel
+            {t.toolbar.cancel}
           </button>
         </form>
       ) : (
         <>
-          <button type="button" aria-label="Bold" title="Bold (Ctrl or ⌘ B)" onClick={() => run("bold")}>
+          <button type="button" aria-label={t.toolbar.bold} title={t.toolbar.boldTitle} onClick={() => run("bold")}>
             <b>B</b>
           </button>
-          <button type="button" aria-label="Italic" title="Italic (Ctrl or ⌘ I)" onClick={() => run("italic")}>
+          <button type="button" aria-label={t.toolbar.italic} title={t.toolbar.italicTitle} onClick={() => run("italic")}>
             <i>I</i>
           </button>
-          <button type="button" title="Add a link (Ctrl or ⌘ K)" onClick={startLink}>
-            Link
+          <button type="button" title={t.toolbar.addLinkTitle} onClick={startLink}>
+            {t.toolbar.link}
           </button>
-          <button type="button" title="Remove the link" onClick={() => run("unlink")}>
-            Unlink
+          <button type="button" title={t.toolbar.removeLinkTitle} onClick={() => run("unlink")}>
+            {t.toolbar.unlink}
           </button>
         </>
       )}

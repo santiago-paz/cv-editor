@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "./i18n";
 
 /** A button that runs something, such as Undo, or a link that opens another
     site in a new tab. */
@@ -34,6 +35,7 @@ export function useToast() {
 }
 
 export function Toast({ message, onDone }: { message: Message | null; onDone: () => void }) {
+  const t = useT();
   const action = message?.action;
   return (
     <div className={"toast" + (message ? " on" : "")} role="status" aria-live="polite">
@@ -42,7 +44,7 @@ export function Toast({ message, onDone }: { message: Message | null; onDone: ()
         ("href" in action ? (
           <a href={action.href} target="_blank" rel="noopener" onClick={onDone}>
             {action.label}
-            <span className="sr-only"> (opens in a new tab)</span>
+            <span className="sr-only">{t.common.newTab}</span>
           </a>
         ) : (
           <button

@@ -7,6 +7,7 @@ import type { Template } from "@/lib/cv/templates";
 import { measureFlow } from "@/lib/measure";
 import { paginate, type Pagination } from "@/lib/paginate";
 import { PHOTO, glide, left, movable, moving, printsPhoto } from "@/lib/photo-motion";
+import { useT } from "./i18n";
 
 /* The stage: the CV set in an iframe with its own stylesheet, on a sheet the
    width of A4, with the page cuts drawn where Chrome will break the pages.
@@ -132,6 +133,7 @@ export default function Stage({
   onMeasure: (measure: Measure) => void;
   onPick: (path: string) => void;
 }) {
+  const t = useT();
   const frame = useRef<HTMLIFrameElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const painted = useRef({ css: "", body: "", lang: "", doc: "" });
@@ -140,7 +142,7 @@ export default function Stage({
   const [loaded, setLoaded] = useState(false);
   const [height, setHeight] = useState(PAGE_MM * PX_PER_MM);
   const [cuts, setCuts] = useState<number[]>([]);
-  const [flags, setFlags] = useState<(Box & { title: string })[]>([]);
+  const [flags, setFlags] = useState<(Box & { text: string; page: number })[]>([]);
   const [scale, setScale] = useState(1);
   const [hover, setHover] = useState<(Box & { dark: boolean }) | null>(null);
   const [marks, setMarks] = useState<{ boxes: Box[]; dark: boolean; key: number }>({ boxes: [], dark: false, key: 0 });
@@ -233,7 +235,8 @@ export default function Stage({
             left: 0,
             width: 6,
             height: Math.max(last.height, 10),
-            title: `“${last.text}” ends page ${index + 1} with nothing under it`,
+            text: last.text,
+            page: index + 1,
           },
         ];
       }),
@@ -390,7 +393,7 @@ export default function Stage({
   }
 
   return (
-    <div className="stage" ref={stage} id="preview" role="region" aria-label="Preview of your CV" tabIndex={-1}>
+    <div className="stage" ref={stage} id="preview" role="region" aria-label={t.stage.previewLabel} tabIndex={-1}>
       <div className="stage-inner">
         <div style={{ width: sheetWidth * scale, height: sheetHeight * scale }}>
           <div className="zoomer" style={{ width: sheetWidth, transform: `scale(${scale})`, transformOrigin: "0 0" }}>
@@ -410,7 +413,7 @@ export default function Stage({
               >
                 <iframe
                   ref={frame}
-                  title="CV preview"
+                  title={t.stage.frameTitle}
                   srcDoc={SKELETON}
                   sandbox="allow-same-origin"
                   tabIndex={-1}
@@ -424,7 +427,7 @@ export default function Stage({
               {!example &&
                 cuts.map((top, index) => (
                   <div key={index} className="cut" style={{ top }}>
-                    <span>Page {index + 2} starts here</span>
+                    <span>{t.stage.pageStarts(index + 2)}</span>
                   </div>
                 ))}
               {!example &&
@@ -432,7 +435,7 @@ export default function Stage({
                   <div
                     key={index}
                     className="orphan-flag"
-                    title={flag.title}
+                    title={t.stage.stranded(flag.text, flag.page)}
                     style={{ top: flag.top, height: flag.height }}
                   />
                 ))}

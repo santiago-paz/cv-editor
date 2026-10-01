@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Figtree } from "next/font/google";
+import { LANG_SCRIPT } from "@/lib/i18n/boot";
 import "./globals.css";
 
 const sans = Figtree({ subsets: ["latin", "latin-ext"], variable: "--font-sans", display: "swap" });
@@ -24,8 +25,11 @@ export const viewport: Viewport = {
 };
 
 /* Sets the saved theme before the first paint, so a dark choice does not flash
-   light on load. */
-const PREFS = `try{var u=JSON.parse(localStorage.getItem("cv-editor.v1.ui")||"{}"),r=document.documentElement;if(u.theme==="light"||u.theme==="dark")r.dataset.theme=u.theme}catch(e){}`;
+   light on load, and the language of the page, which the editor and the
+   privacy page both read. */
+const PREFS =
+  `try{var u=JSON.parse(localStorage.getItem("cv-editor.v1.ui")||"{}"),r=document.documentElement;if(u.theme==="light"||u.theme==="dark")r.dataset.theme=u.theme}catch(e){}` +
+  LANG_SCRIPT;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

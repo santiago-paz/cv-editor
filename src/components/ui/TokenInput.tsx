@@ -3,6 +3,7 @@
 import { useRef, useState, type ClipboardEvent, type DragEvent, type KeyboardEvent } from "react";
 import { fold } from "@/lib/suggest/text";
 import type { Suggest } from "@/lib/suggest/types";
+import { useT } from "../i18n";
 import { Icon } from "../icons";
 import { Combo } from "./Combo";
 import { flowStep } from "./flow";
@@ -47,6 +48,7 @@ export function TokenInput({
   /** Chips from this position on are marked as past the limit. */
   over?: number;
 }) {
+  const t = useT();
   const wrap = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState("");
   const [dragging, setDragging] = useState<number | null>(null);
@@ -150,7 +152,7 @@ export function TokenInput({
             type="button"
             className="chip-x"
             tabIndex={-1}
-            aria-label={`Remove ${chip.text}`}
+            aria-label={t.tokens.remove(chip.text)}
             onMouseDown={event => event.preventDefault()}
             onClick={() => remove(index)}
           >
@@ -166,7 +168,7 @@ export function TokenInput({
         anchorRef={wrap}
         boxClassName="bare"
         aria-label={label}
-        placeholder={chips.length ? "Add another" : placeholder}
+        placeholder={chips.length ? t.tokens.addAnother : placeholder}
         field={field}
         onPick={item => commit(item.value)}
         onAdvance={input => {

@@ -1,4 +1,5 @@
 import { textOf } from "../html";
+import { UNTITLED } from "./defaults";
 import { sampleCv } from "./sample";
 import type { Cv, Section } from "./types";
 
@@ -60,10 +61,11 @@ export function exampleFor(cv: Cv): Cv {
   return { ...sampleCv(), id: cv.id, template: cv.template, accent: cv.accent, locale: cv.locale };
 }
 
-/** What the CV is called in lists. A CV still named "Untitled CV" takes its
-    owner's name once there is one, so a list of them can be told apart. */
-export function cvLabel(cv: Cv): string {
+/** What the CV is called in lists. A CV still untitled takes its owner's name
+    once there is one, so a list of them can be told apart. With no name either,
+    `untitled` is what to call it: the editor's words for it, in its language. */
+export function cvLabel(cv: Cv, untitled = UNTITLED): string {
   const title = cv.title.trim();
-  if (title && title !== "Untitled CV") return title;
-  return cv.person.name.trim() || cv.person.role.trim() || "Untitled CV";
+  if (title && title !== UNTITLED) return title;
+  return cv.person.name.trim() || cv.person.role.trim() || untitled;
 }

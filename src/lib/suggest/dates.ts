@@ -21,6 +21,11 @@ export const MONTHS: Record<Locale, string[]> = {
 
 export const PRESENT: Record<Locale, string> = { en: "Present", es: "Actualidad", de: "Heute" };
 
+/** A range as a CV in this language writes it, for the editor's examples. */
+export function exampleRange(locale: Locale): string {
+  return `${MONTHS[locale][2]} 2022 - ${PRESENT[locale]}`;
+}
+
 /** Every month name the editor reads, folded, in the order of the year. */
 const MONTH_NAMES: string[][] = [
   ["january", "enero", "januar"],

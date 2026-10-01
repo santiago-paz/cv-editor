@@ -4,6 +4,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent
 import { textOf } from "@/lib/html";
 import { sanitize } from "@/lib/sanitize";
 import type { Suggest, Suggestion } from "@/lib/suggest/types";
+import { useT } from "../i18n";
 import { caretToEnd, flowStep } from "./flow";
 import { SuggestList, placeFor, worthShowing, type Place } from "./SuggestList";
 
@@ -55,6 +56,7 @@ export function RichField({
   onKeys,
   className,
 }: Props) {
+  const t = useT();
   const listId = useId();
   const ref = useRef<HTMLDivElement>(null);
   const last = useRef<string | null>(null);
@@ -236,7 +238,7 @@ export function RichField({
       />
       {open && (
         <span className="sr-only" role="status">
-          {items.length === 1 ? "1 suggestion" : `${items.length} suggestions`}
+          {items.length === 1 ? t.suggest.one : t.suggest.many(items.length)}
         </span>
       )}
       {open && place && (

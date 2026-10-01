@@ -4,6 +4,8 @@ import { memo, useState } from "react";
 import { bullet, role } from "@/lib/cv/defaults";
 import type { Role, RolesSection } from "@/lib/cv/types";
 import { textOf } from "@/lib/html";
+import { exampleRange } from "@/lib/suggest/dates";
+import { useT } from "../i18n";
 import { Icon } from "../icons";
 import { useSuggest } from "../suggest-context";
 import type { Say, Update } from "../types";
@@ -19,6 +21,7 @@ import { inDraft } from "./helpers";
    same entry holds both: a title, a place, dates, and a few bullets. */
 
 export function RolesEditor({ section, update, say }: { section: RolesSection; update: Update; say: Say }) {
+  const t = useT();
   const study = section.preset === "education";
   const sid = section.id;
 
@@ -51,11 +54,11 @@ export function RolesEditor({ section, update, say }: { section: RolesSection; u
       <AddButton onClick={addRole}>
         {section.items.length === 0
           ? study
-            ? "Add a degree or course"
-            : "Add your latest job"
+            ? t.roles.addDegree
+            : t.roles.addLatest
           : study
-            ? "Add another degree or course"
-            : "Add another job"}
+            ? t.roles.addAnotherDegree
+            : t.roles.addJob}
       </AddButton>
     </>
   );
@@ -80,6 +83,7 @@ const RoleCard = memo(function RoleCard({
   update: Update;
   say: Say;
 }) {
+  const t = useT();
   const suggest = useSuggest();
   const [more, setMore] = useState(!!(item.note || item.url));
   const [details, setDetails] = useState(item.bullets.some(one => textOf(one.html)));
@@ -95,7 +99,7 @@ const RoleCard = memo(function RoleCard({
       one[key] = value;
     });
   const path = `sections.${sid}.${item.id}`;
-  const name = item.org.trim() || item.title.trim() || (study ? "New entry" : "New job");
+  const name = item.org.trim() || item.title.trim() || (study ? t.roles.newEntry : t.roles.newJob);
 
   function shift(to: number) {
     update(draft => {
@@ -109,7 +113,7 @@ const RoleCard = memo(function RoleCard({
       const target = inDraft(draft, sid);
       if (target?.kind === "roles") target.items.splice(index, 1);
     });
-    say(`Deleted “${name}”.`, () =>
+    say(t.editor.deleted(name), () =>
       update(draft => {
         const target = inDraft(draft, sid);
         if (target?.kind === "roles") target.items.splice(Math.min(index, target.items.length), 0, item);
@@ -127,7 +131,7 @@ const RoleCard = memo(function RoleCard({
       </header>
 
       <div className="fields">
-        <Field label={study ? "Degree or course" : "Job title"} htmlFor={`${item.id}-title`}>
+        <Field label={study ? t.roles.degree : t.roles.jobTitle} htmlFor={`${item.id}-title`}>
           <Combo
             id={`${item.id}-title`}
             value={item.title}
@@ -135,11 +139,11 @@ const RoleCard = memo(function RoleCard({
             suggest={study ? suggest.degree : suggest.title}
             field={`${path}.title`}
             placeholder={study ? "B.Sc. Computer Science" : "Senior Frontend Engineer"}
-            aria-label={study ? "Degree or course" : "Job title"}
+            aria-label={study ? t.roles.degree : t.roles.jobTitle}
           />
         </Field>
         <div className="two when">
-          <Field label={study ? "School" : "Company"} htmlFor={`${item.id}-org`}>
+          <Field label={study ? t.roles.school : t.roles.company} htmlFor={`${item.id}-org`}>
             <Combo
               id={`${item.id}-org`}
               value={item.org}
@@ -147,28 +151,26 @@ const RoleCard = memo(function RoleCard({
               suggest={study ? suggest.school : suggest.company}
               field={`${path}.org`}
               placeholder={study ? "University of Valencia" : "Northwind Commerce"}
-              aria-label={study ? "School" : "Company"}
+              aria-label={study ? t.roles.school : t.roles.company}
             />
           </Field>
-          <Field label="When" htmlFor={`${item.id}-dates`}>
+          <Field label={t.roles.when} htmlFor={`${item.id}-dates`}>
             <Combo
               id={`${item.id}-dates`}
               value={item.dates}
               onChange={set("dates")}
               suggest={suggest.dates}
               field={`${path}.dates`}
-              placeholder={study ? "2012 - 2016" : "Mar 2022 - Present"}
-              aria-label="Dates"
+              placeholder={study ? "2012 - 2016" : exampleRange(suggest.locale)}
+              aria-label={t.roles.datesLabel}
             />
           </Field>
         </div>
-        <p className="field-hint tight">
-          Type <b>3/22 -</b> for <b>Mar 2022 - Present</b>, or <b>2019 2022</b> for <b>2019 - 2022</b>.
-        </p>
+        <p className="field-hint tight">{t.roles.datesHint("3/22 -", exampleRange(suggest.locale), "2019 2022", "2019 - 2022")}</p>
 
         {more ? (
           <div className="two">
-            <Field label="Note after the title" htmlFor={`${item.id}-note`}>
+            <Field label={t.roles.note} htmlFor={`${item.id}-note`}>
               <Combo
                 id={`${item.id}-note`}
                 value={item.note}
@@ -177,10 +179,10 @@ const RoleCard = memo(function RoleCard({
                 openOnFocus
                 field={`${path}.note`}
                 placeholder={study ? "(completed)" : "(part-time)"}
-                aria-label="Note after the title"
+                aria-label={t.roles.note}
               />
             </Field>
-            <Field label="Website" htmlFor={`${item.id}-url`}>
+            <Field label={t.roles.website} htmlFor={`${item.id}-url`}>
               <Combo
                 id={`${item.id}-url`}
                 value={item.url}
@@ -188,7 +190,7 @@ const RoleCard = memo(function RoleCard({
                 field={`${path}.url`}
                 inputMode="url"
                 placeholder="example.com"
-                aria-label="Website of the company or school"
+                aria-label={t.roles.websiteLabel}
               />
             </Field>
           </div>
@@ -201,7 +203,7 @@ const RoleCard = memo(function RoleCard({
               focusLater(`[data-field="${path}.note"]`);
             }}
           >
-            <Icon name="plus" size={13} /> Note or website
+            <Icon name="plus" size={13} /> {t.roles.noteOrWebsite}
           </button>
         )}
       </div>
@@ -213,7 +215,7 @@ const RoleCard = memo(function RoleCard({
           edit={recipe => edit(one => recipe(one.bullets))}
           say={say}
           title={study ? undefined : item.title}
-          first={study ? "Honors, thesis, anything worth a line" : "What you did"}
+          first={study ? t.roles.firstDetail : t.bullets.first}
           improve={{ title: item.title, dates: item.dates }}
         />
       ) : (
@@ -231,7 +233,7 @@ const RoleCard = memo(function RoleCard({
             }
           }}
         >
-          <Icon name="plus" size={13} /> Add details
+          <Icon name="plus" size={13} /> {t.roles.addDetails}
         </button>
       )}
     </article>

@@ -4,7 +4,7 @@ import { produce } from "immer";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { cvLabel, exampleFor, isBlank } from "@/lib/cv/blank";
-import { DEFAULT_ACCENT, blankCv, copyTitle, duplicate } from "@/lib/cv/defaults";
+import { DEFAULT_ACCENT, UNTITLED, blankCv, copyTitle, duplicate } from "@/lib/cv/defaults";
 import { guessLocale } from "@/lib/cv/labels";
 import { fileName, renderCv } from "@/lib/cv/render";
 import { sampleCv } from "@/lib/cv/sample";
@@ -12,6 +12,7 @@ import { sanitizeCv } from "@/lib/cv/sanitize-cv";
 import { TEMPLATES } from "@/lib/cv/templates";
 import type { Cv, Photo } from "@/lib/cv/types";
 import { defaultWay, fetchPdf, printCv, saveBlob } from "@/lib/download";
+import { backupMessage, pdfMessage } from "@/lib/i18n/errors";
 import { sanitize } from "@/lib/sanitize";
 import { returnedFromSignIn, whoIsSignedIn } from "@/lib/sign-in";
 import { DONATE_URL } from "@/lib/site";
@@ -35,6 +36,7 @@ import {
   type Ui,
 } from "@/lib/storage";
 import type { PdfControls } from "./DownloadMenu";
+import { useT } from "./i18n";
 import { Icon } from "./icons";
 import Panel, { stepForPath, stepsOf, type StepId } from "./Panel";
 import PhotoPane from "./PhotoPane";
@@ -96,6 +98,7 @@ export default function Editor() {
   const [way] = useState(defaultWay);
   const [tabOnly, setTabOnly] = useState(boot.tabOnly);
   const toast = useToast();
+  const t = useT();
   /* The first PDF of a visit mentions donations. Later ones do not. */
   const askedToDonate = useRef(false);
 
@@ -229,8 +232,8 @@ export default function Editor() {
 
   const { show } = toast;
   const say = useCallback(
-    (text: string, undo?: () => void) => show(text, undo ? { action: { label: "Undo", run: undo } } : {}),
-    [show],
+    (text: string, undo?: () => void) => show(text, undo ? { action: { label: t.common.undo, run: undo } } : {}),
+    [show, t],
   );
 
   /* A blank CV on a desktop screen starts with the caret in the name box, so the
@@ -247,10 +250,10 @@ export default function Editor() {
     if (!returnedFromSignIn()) return;
     void whoIsSignedIn()
       .then(({ user }) => {
-        if (user) show(`Signed in as ${user.email}. Press Improve with AI to try it.`);
+        if (user) show(t.editor.signedIn(user.email));
       })
       .catch(() => undefined);
-  }, [show]);
+  }, [show, t]);
 
   /* ------------------------------------------------------------ library */
 
@@ -292,12 +295,13 @@ export default function Editor() {
     const copy = duplicate(
       source,
       copyTitle(
-        source.title,
+        source.title === UNTITLED ? t.cvs.untitled : source.title,
         cvs.map(item => item.title),
+        t.cvs.copyWord,
       ),
     );
     addCv(copy, false);
-    say(`Made a copy called “${copy.title}”. The original stays as it was.`);
+    say(t.editor.copyMade(copy.title));
   }
 
   function deleteCv(id: string) {
@@ -312,7 +316,7 @@ export default function Editor() {
       setMeasure(null);
       setStep("you");
     }
-    say(`Deleted “${cvLabel(gone)}”.`, () => {
+    say(t.editor.deleted(cvLabel(gone, t.cvs.untitled)), () => {
       setCvs(list => {
         const copy = [...list];
         copy.splice(Math.min(index, copy.length), 0, gone);
@@ -331,7 +335,7 @@ export default function Editor() {
   function backUp() {
     const stamp = new Date().toISOString().slice(0, 10);
     saveBlob(new Blob([backup(cvs, photo)], { type: "application/json" }), `cv-editor-backup-${stamp}.json`);
-    say(`Saved a backup of ${cvs.length} ${cvs.length === 1 ? "CV" : "CVs"}. Open it with Restore, in this browser or another.`);
+    say(t.editor.backedUp(cvs.length));
   }
 
   async function restore(file: File) {
@@ -356,19 +360,15 @@ export default function Editor() {
       }
       setCvs(next);
       if (!openId && next[0]) setOpenId(next[0].id);
-      let photoNote = "";
+      let photoBack = false;
       if (found.photo && !photo) {
         setPhoto(found.photo);
         savePhoto(found.photo);
-        photoNote = " The photo came back too.";
+        photoBack = true;
       }
-      const changed = [added && `${added} added`, replaced && `${replaced} updated`].filter(Boolean);
-      const stayed = kept
-        ? ` ${kept} stayed as ${kept === 1 ? "it was, because the copy" : "they were, because the copies"} here ${kept === 1 ? "is" : "are"} newer.`
-        : "";
-      say(`Restored the backup${changed.length ? `: ${changed.join(", ")}` : ""}.${stayed}${photoNote}`);
+      say(t.editor.restored(added, replaced, kept, photoBack));
     } catch (error) {
-      say(error instanceof Error ? error.message : "Could not read that backup.");
+      say(backupMessage(t.errors.backup, error));
     }
   }
 
@@ -378,13 +378,9 @@ export default function Editor() {
     setPhoto(next);
     const result = savePhoto(next);
     if (!result.ok) {
-      say(
-        result.reason === "full"
-          ? "This browser's storage is full, so the photo is not saved. Delete some CVs, or use a smaller photo."
-          : "This browser does not let the editor save, so the photo lasts until you close the tab.",
-      );
+      say(result.reason === "full" ? t.editor.photoFull : t.editor.photoBlocked);
     } else if ("dropped" in result && result.dropped) {
-      say("Saved the photo. The original did not fit in storage, so a later adjustment starts from the crop.");
+      say(t.editor.photoDropped);
     }
   }
 
@@ -398,35 +394,27 @@ export default function Editor() {
     if (on) {
       const result = moveToTab(cvsRef.current, photo);
       if (!result.ok) {
-        say(
-          result.reason === "full"
-            ? "This tab has no room for your CVs, so they stay saved in this browser."
-            : "This browser does not let a tab keep its own copy, so your CVs stay saved in the browser.",
-        );
+        say(result.reason === "full" ? t.editor.tabFull : t.editor.tabBlocked);
         return;
       }
       setTabOnly(true);
       setSaved({ ok: true });
-      toast.show("This tab now forgets your CVs when you close it. Back up any you want to keep.", {
-        action: { label: "Back up", run: backUp },
+      toast.show(t.editor.tabOn, {
+        action: { label: t.editor.tabOnAction, run: backUp },
         ms: 9000,
       });
       return;
     }
     const moved = moveToBrowser(cvsRef.current, photo);
     if (!moved.result.ok) {
-      say(
-        moved.result.reason === "full"
-          ? "This browser's storage is full, so your CVs stay in this tab only. Delete some CVs, or back them up."
-          : "This browser does not let the editor save, so your CVs stay in this tab only.",
-      );
+      say(moved.result.reason === "full" ? t.editor.browserFull : t.editor.browserBlocked);
       return;
     }
     setTabOnly(false);
     fromStorage.current = true;
     setCvs(moved.cvs);
     setSaved({ ok: true });
-    say("Your CVs are saved in this browser again.");
+    say(t.editor.browserOn);
   }
 
   /* ---------------------------------------------------------- download */
@@ -442,7 +430,7 @@ export default function Editor() {
       setView("edit");
     });
     focusName();
-    say("The CV is empty. Add your name and job title first.");
+    say(t.editor.emptyCv);
     return false;
   }
 
@@ -450,8 +438,8 @@ export default function Editor() {
   function thank(lead: string) {
     if (DONATE_URL && !askedToDonate.current) {
       askedToDonate.current = true;
-      const ask = "If the editor helped, you can support it with a donation.";
-      toast.show(lead ? `${lead}. ${ask}` : ask, { action: { label: "Donate", href: DONATE_URL }, ms: 10_000 });
+      const ask = t.editor.donateAsk;
+      toast.show(lead ? `${lead}. ${ask}` : ask, { action: { label: t.editor.donate, href: DONATE_URL }, ms: 10_000 });
     } else if (lead) toast.show(lead);
   }
 
@@ -462,8 +450,8 @@ export default function Editor() {
       await printCv(cv, photo?.src ?? null);
       thank("");
     } catch {
-      toast.show("The print dialog did not open. You can download a PDF file instead.", {
-        action: { label: "Download file", run: () => void downloadFile() },
+      toast.show(t.editor.printFailed, {
+        action: { label: t.editor.downloadFile, run: () => void downloadFile() },
         ms: 10_000,
       });
     }
@@ -477,11 +465,10 @@ export default function Editor() {
       const blob = await fetchPdf(cv, photo?.src ?? null);
       const name = fileName(cv);
       saveBlob(blob, name);
-      thank(`Downloaded ${name}`);
+      thank(t.editor.downloaded(name));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "The PDF could not be made.";
-      toast.show(`${message} You can save it from your browser's print dialog instead.`, {
-        action: { label: "Save as PDF", run: () => void savePdf() },
+      toast.show(pdfMessage(t.errors.pdf, error) + t.editor.printHint, {
+        action: { label: t.pdf.print.title, run: () => void savePdf() },
         ms: 10_000,
       });
     } finally {
@@ -505,7 +492,7 @@ export default function Editor() {
       if (key === "s") {
         event.preventDefault();
         flush();
-        toast.show(`Saved in this ${tabOnly ? "tab" : "browser"}. Everything saves as you type.`);
+        toast.show(tabOnly ? t.editor.savedKeyTab : t.editor.savedKeyBrowser);
       }
       if (key === "p" && cv) {
         event.preventDefault();
@@ -514,7 +501,7 @@ export default function Editor() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cv, flush, toast, tabOnly]);
+  }, [cv, flush, toast, tabOnly, t]);
 
   /* ---------------------------------------------------- click to edit */
 
@@ -543,14 +530,14 @@ export default function Editor() {
   }
 
   /* The step in use must exist: deleting a section can remove it. */
-  const steps = cv ? stepsOf(cv) : [];
+  const steps = cv ? stepsOf(cv, t.panel) : [];
   const currentStep = steps.some(item => item.id === step) ? step : "you";
   const photoUsers = cvs.filter(item => item.showPhoto).length;
 
   return (
     <div className="app" data-view={view}>
       <a className="skip-link" href="#preview">
-        Skip to the preview
+        {t.editor.skip}
       </a>
 
       <TopBar
@@ -564,7 +551,7 @@ export default function Editor() {
         pdf={pdf}
         onOpen={openCv}
         onNew={newCv}
-        onSample={() => addCv(sampleCv(), false)}
+        onSample={() => addCv(sampleCv(t.cvs.sampleTitle), false)}
         onDuplicate={duplicateCv}
         onDelete={deleteCv}
         onRename={renameCv}
@@ -604,12 +591,12 @@ export default function Editor() {
                       update(draft => {
                         draft.showPhoto = true;
                       });
-                    say("Saved the photo.");
+                    say(t.editor.photoSaved);
                   }}
                   onRemove={() => {
                     const before = photo;
                     keepPhoto(null);
-                    say("Removed the photo from every CV.", () => keepPhoto(before));
+                    say(t.editor.photoRemoved, () => keepPhoto(before));
                   }}
                   onPreview={setPlacing}
                   onError={message => say(message)}
@@ -618,17 +605,17 @@ export default function Editor() {
             />
           </SuggestProvider>
         ) : (
-          <section className="write empty" aria-label="Write your CV">
+          <section className="write empty" aria-label={t.editor.writeLabel}>
             <div className="empty-state">
-              <h2>No CVs yet</h2>
-              <p>Start a new one, or open the sample to see how the editor works.</p>
+              <h2>{t.editor.emptyTitle}</h2>
+              <p>{t.editor.emptyText}</p>
               <div className="buttons">
                 <button type="button" className="btn primary" onClick={newCv}>
                   <Icon name="plus" />
-                  New CV
+                  {t.cvs.new}
                 </button>
-                <button type="button" className="btn secondary" onClick={() => addCv(sampleCv(), false)}>
-                  Open the sample
+                <button type="button" className="btn secondary" onClick={() => addCv(sampleCv(t.cvs.sampleTitle), false)}>
+                  {t.editor.openSample}
                 </button>
               </div>
             </div>
@@ -652,19 +639,19 @@ export default function Editor() {
               <SheetMeter measure={measure} template={template} example={example} />
             </>
           ) : (
-            <div className="stage" id="preview" role="region" aria-label="Preview of your CV" />
+            <div className="stage" id="preview" role="region" aria-label={t.stage.previewLabel} />
           )}
         </div>
       </main>
 
-      <nav className="dock" aria-label="Show">
+      <nav className="dock" aria-label={t.editor.dockLabel}>
         <button type="button" aria-pressed={view === "edit"} onClick={() => setView("edit")}>
           <Icon name="pencil" />
-          Edit
+          {t.editor.edit}
         </button>
         <button type="button" aria-pressed={view === "preview"} onClick={() => setView("preview")}>
           <Icon name="eye" />
-          Preview
+          {t.editor.preview}
         </button>
       </nav>
 

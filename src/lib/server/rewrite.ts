@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { RewriteRequest } from "../ai";
+import type { AiCode } from "../errors";
 import { sanitizeServer } from "./sanitize";
 
 /* The one place that talks to the model. A change of model or provider
@@ -37,7 +38,7 @@ export interface Tokens {
 
 export type Rewrite =
   | { ok: true; items: string[]; tips: string[]; tokens: Tokens }
-  | { ok: false; status: number; error: string; tokens: Tokens };
+  | { ok: false; status: number; code: AiCode; error: string; tokens: Tokens };
 
 let client: Anthropic | null = null;
 
@@ -66,21 +67,21 @@ export async function rewrite(input: RewriteRequest): Promise<Rewrite> {
     });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {
-      return { ok: false, status: 503, error: "The AI is busy. Try again in a minute.", tokens: none };
+      return { ok: false, status: 503, code: "busy", error: "The AI is busy. Try again in a minute.", tokens: none };
     }
     if (error instanceof Anthropic.APIError) {
       console.error("AI rewrite failed:", error.status, error.message);
-      return { ok: false, status: 502, error: "The AI could not answer. Try again in a minute.", tokens: none };
+      return { ok: false, status: 502, code: "unavailable", error: "The AI could not answer. Try again in a minute.", tokens: none };
     }
     throw error;
   }
 
   const tokens = { input: response.usage.input_tokens, output: response.usage.output_tokens };
   if (response.stop_reason === "refusal") {
-    return { ok: false, status: 422, error: "The AI would not rewrite this block.", tokens };
+    return { ok: false, status: 422, code: "refused", error: "The AI would not rewrite this block.", tokens };
   }
   if (response.stop_reason === "max_tokens" || !response.parsed_output) {
-    return { ok: false, status: 502, error: "The AI's answer came back cut off. Try a shorter block.", tokens };
+    return { ok: false, status: 502, code: "cutOff", error: "The AI's answer came back cut off. Try a shorter block.", tokens };
   }
   return { ok: true, ...clean(input, response.parsed_output), tokens };
 }

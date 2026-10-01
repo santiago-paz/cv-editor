@@ -1,4 +1,5 @@
 import { isPhotoUri, readCv } from "@/lib/cv/schema";
+import { refusal, type PdfCode } from "@/lib/errors";
 import { ChromeMissing } from "@/lib/server/chrome";
 import { foreign } from "@/lib/server/origin";
 import { makePdf } from "@/lib/server/pdf";
@@ -15,8 +16,8 @@ export const maxDuration = 60;
 /** A CV with a photo is about 150 KB. This leaves room and no more. */
 const MAX_BODY = 2_500_000;
 
-function fail(status: number, error: string): Response {
-  return Response.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
+function fail(status: number, code: PdfCode, error: string): Response {
+  return Response.json(refusal(code, error), { status, headers: { "Cache-Control": "no-store" } });
 }
 
 /** attachment; filename="Alex_Moreno_CV.pdf", with a UTF-8 copy for names
@@ -27,24 +28,24 @@ function disposition(name: string): string {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  if (foreign(request)) return fail(403, "This server only prints CVs for its own editor.");
+  if (foreign(request)) return fail(403, "foreign", "This server only prints CVs for its own editor.");
   if (Number(request.headers.get("content-length") || 0) > MAX_BODY) {
-    return fail(413, "That CV is too large to print. Try a smaller photo.");
+    return fail(413, "tooLarge", "That CV is too large to print. Try a smaller photo.");
   }
 
   let payload: { cv?: unknown; photo?: unknown };
   try {
     const text = await request.text();
-    if (text.length > MAX_BODY) return fail(413, "That CV is too large to print. Try a smaller photo.");
+    if (text.length > MAX_BODY) return fail(413, "tooLarge", "That CV is too large to print. Try a smaller photo.");
     payload = JSON.parse(text);
   } catch {
-    return fail(400, "The request was not valid JSON.");
+    return fail(400, "badJson", "The request was not valid JSON.");
   }
 
   const cv = readCv(payload?.cv);
-  if (!cv) return fail(400, "The request holds no CV.");
+  if (!cv) return fail(400, "noCv", "The request holds no CV.");
   if (payload.photo != null && !isPhotoUri(payload.photo)) {
-    return fail(400, "The photo must be a JPEG, PNG or WebP image under 1 MB.");
+    return fail(400, "badPhoto", "The photo must be a JPEG, PNG or WebP image under 1 MB.");
   }
 
   try {
@@ -58,8 +59,8 @@ export async function POST(request: Request): Promise<Response> {
       },
     });
   } catch (error) {
-    if (error instanceof ChromeMissing) return fail(503, error.message);
+    if (error instanceof ChromeMissing) return fail(503, "noChrome", error.message);
     console.error("PDF failed:", error instanceof Error ? error.message : error);
-    return fail(500, "The PDF could not be made. Try again, or print the preview instead.");
+    return fail(500, "failed", "The PDF could not be made. Try again, or print the preview instead.");
   }
 }

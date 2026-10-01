@@ -4,6 +4,7 @@ import type { Cv } from "@/lib/cv/types";
 import { textOf } from "@/lib/html";
 import { fold } from "@/lib/suggest/text";
 import { summaryDrafts } from "@/lib/suggest/summary";
+import { useT } from "../i18n";
 import Improve from "../Improve";
 import { useSuggest } from "../suggest-context";
 import type { Update } from "../types";
@@ -26,6 +27,7 @@ export function SummaryStep({
   /** How many lines the summary takes on the page, once measured. */
   lines: number | null;
 }) {
+  const t = useT();
   const suggest = useSuggest();
   const sidebar = cv.template === "sidebar";
   const drafts = summaryDrafts(cv);
@@ -34,16 +36,13 @@ export function SummaryStep({
   return (
     <>
       <header className="pane-head">
-        <h2 className="pane-title">Summary</h2>
-        <p className="pane-help">
-          A few lines on who you are.{" "}
-          {drafts.length ? "Pick a draft, or write your own." : "Add your job title and skills first to get drafts."}
-        </p>
+        <h2 className="pane-title">{t.summary.title}</h2>
+        <p className="pane-help">{t.summary.help(drafts.length > 0)}</p>
       </header>
 
       <div className="fields">
         {sidebar && (
-          <Field label="Heading on the CV" htmlFor="summary-title">
+          <Field label={t.summary.headingField} htmlFor="summary-title">
             <Combo
               id="summary-title"
               value={cv.summaryTitle}
@@ -59,15 +58,15 @@ export function SummaryStep({
           </Field>
         )}
         <Field
-          label="Summary"
+          label={t.summary.field}
           aside={
             lines !== null && (
               <span className={"meter " + tone} aria-live="polite">
-                {lines} {lines === 1 ? "line" : "lines"}
+                {t.summary.lines(lines)}
               </span>
             )
           }
-          hint="Recruiters skim, so 3 or 4 lines read best. Select words to make them bold."
+          hint={t.summary.hint}
         >
           <RichField
             value={cv.summary}
@@ -76,10 +75,10 @@ export function SummaryStep({
                 draft.summary = html;
               })
             }
-            label="Summary"
+            label={t.summary.field}
             field="summary"
             tall
-            placeholder="What you do and what you are good at"
+            placeholder={t.summary.placeholder}
             suggest={query => {
               const typed = fold(query.trim());
               return drafts.filter(text => !typed || fold(text).startsWith(typed)).map(value => ({ value }));

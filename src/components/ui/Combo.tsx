@@ -13,6 +13,7 @@ import {
 } from "react";
 import { fold } from "@/lib/suggest/text";
 import type { Suggest, Suggestion } from "@/lib/suggest/types";
+import { useT } from "../i18n";
 import { flowStep } from "./flow";
 import { SuggestList, placeFor, worthShowing, type Place } from "./SuggestList";
 
@@ -69,6 +70,7 @@ export function Combo({
   onBlur,
   ...rest
 }: ComboProps) {
+  const t = useT();
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -246,7 +248,7 @@ export function Combo({
       {trailing}
       {open && (
         <span className="sr-only" role="status">
-          {items.length === 1 ? "1 suggestion" : `${items.length} suggestions`}
+          {items.length === 1 ? t.suggest.one : t.suggest.many(items.length)}
         </span>
       )}
       {open && place && (

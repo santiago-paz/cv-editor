@@ -1,14 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { markNew, sameWords } from "@/lib/ai-diff";
 import { LIMITS, type RewriteReply } from "@/lib/ai";
 import type { Locale } from "@/lib/cv/types";
 import { textOf } from "@/lib/html";
+import { aiMessage } from "@/lib/i18n/errors";
 import { sanitize } from "@/lib/sanitize";
 import { startSignIn, whoIsSignedIn } from "@/lib/sign-in";
+import { useT } from "./i18n";
 import { GoogleG, Icon } from "./icons";
+import { LegalLink } from "./LegalLink";
 import { IconButton } from "./ui/bits";
 
 /* The AI button under a block of the CV, and what it brings back.
@@ -34,8 +36,6 @@ type State =
   | { step: "error"; title: string; message: string; retry: boolean }
   | { step: "done"; reply: RewriteReply; originals: Block[]; used: Set<string> };
 
-const NO_REWRITE = "No rewrite this time";
-
 export default function Improve({
   kind,
   blocks,
@@ -52,6 +52,7 @@ export default function Improve({
   locale: Locale;
   onUse: (changes: Block[]) => void;
 }) {
+  const t = useT();
   const [state, setState] = useState<State>({ step: "idle" });
   const trigger = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -79,7 +80,7 @@ export default function Improve({
     setState({ step: "busy" });
     const who = await whoIsSignedIn().catch(() => ({ user: null, failed: true }));
     if (who.failed) {
-      setState({ step: "error", title: "Sign-in check failed", message: "Could not check your account. Try again in a minute.", retry: true });
+      setState({ step: "error", title: t.ai.checkTitle, message: t.account.checkFailed, retry: true });
       return;
     }
     if (!who.user) {
@@ -93,19 +94,20 @@ export default function Improve({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind, title, dates, locale, items: originals.map(block => block.html) }),
       });
-      const body = (await response.json().catch(() => null)) as (RewriteReply & { error?: unknown }) | null;
+      const body = (await response.json().catch(() => null)) as (RewriteReply & { error?: unknown; code?: unknown }) | null;
       if (response.status === 401) {
         setState({ step: "signin" });
         return;
       }
       if (!response.ok || !body) {
         /* Vercel's own replies, such as its firewall's, put an object in
-           "error". Only the route's text is fit to show. */
-        const message = typeof body?.error === "string" ? body.error : "";
+           "error". Only the route's text is fit to show, in the words its
+           "code" names when this page has them. */
+        const message = typeof body?.error === "string" ? aiMessage(t.errors.ai, body.code, body.error) : "";
         setState({
           step: "error",
-          title: NO_REWRITE,
-          message: message || `The rewrite failed (error ${response.status}).`,
+          title: t.ai.noRewrite,
+          message: message || t.ai.failedStatus(response.status),
           retry: response.status === 500 || response.status === 502,
         });
         return;
@@ -114,8 +116,8 @@ export default function Improve({
     } catch {
       setState({
         step: "error",
-        title: NO_REWRITE,
-        message: "Could not reach the server. Check your connection and try again.",
+        title: t.ai.noRewrite,
+        message: t.ai.unreachable,
         retry: true,
       });
     }
@@ -126,7 +128,7 @@ export default function Improve({
     try {
       await startSignIn();
     } catch {
-      setState({ step: "error", title: "Sign-in did not start", message: "Could not start the sign-in. Try again in a minute.", retry: false });
+      setState({ step: "error", title: t.ai.startTitle, message: t.account.startFailed, retry: false });
     }
   }
 
@@ -152,8 +154,6 @@ export default function Improve({
     setState({ ...state, used });
   }
 
-  const noun = kind === "bullets" ? "bullets" : "text";
-
   return (
     <>
       <button
@@ -164,15 +164,15 @@ export default function Improve({
         onClick={() => void ask()}
       >
         <Icon name="sparkle" size={15} />
-        {busy ? "Improving…" : "Improve with AI"}
+        {busy ? t.ai.busy : t.ai.button}
       </button>
       <span className="sr-only" role="status">
         {busy
-          ? "Improving…"
+          ? t.ai.busy
           : state.step === "done"
             ? state.reply.items.length > 1
-              ? "Suggestions are ready, below."
-              : "The suggestion is ready, below."
+              ? t.ai.readyMany
+              : t.ai.readyOne
             : ""}
       </span>
 
@@ -196,34 +196,23 @@ export default function Improve({
               <div className="ai-head">
                 <h4 className="ai-title" id={headingId}>
                   <Icon name="sparkle" size={16} />
-                  Sign in to improve your {noun}
+                  {t.ai.signInTitle(kind)}
                 </h4>
               </div>
-              <p className="ai-say">
-                AI rewrites need a Google account. They are free while we test them, up to {LIMITS.day} a day. Your CVs
-                stay in this browser.
-              </p>
+              <p className="ai-say">{t.ai.signInSay(LIMITS.day)}</p>
               <p className="menu-note">
-                The text you send goes to Anthropic&apos;s Claude, in the United States, to write the suggestion. By
-                continuing you accept the{" "}
-                <Link href="/terms" target="_blank" rel="noopener">
-                  Terms
-                  <span className="sr-only"> (opens in a new tab)</span>
-                </Link>{" "}
-                and the{" "}
-                <Link href="/privacy" target="_blank" rel="noopener">
-                  Privacy page
-                  <span className="sr-only"> (opens in a new tab)</span>
-                </Link>
-                .
+                {t.ai.consent(
+                  <LegalLink page="terms">{t.legal.termsLink}</LegalLink>,
+                  <LegalLink page="privacy">{t.legal.privacyLink}</LegalLink>,
+                )}
               </p>
               <div className="ai-actions">
                 <button type="button" className="google-button" disabled={state.going} onClick={() => void signIn()}>
                   <GoogleG />
-                  {state.going ? "Opening Google…" : "Continue with Google"}
+                  {state.going ? t.account.opening : t.account.continue}
                 </button>
                 <button type="button" className="btn quiet" onClick={close}>
-                  Not now
+                  {t.ai.notNow}
                 </button>
               </div>
             </>
@@ -234,7 +223,7 @@ export default function Improve({
               <div className="ai-head">
                 <h4 className="ai-title" id={headingId}>
                   <Icon name="sparkle" size={16} />
-                  Improving your {noun}…
+                  {t.ai.busyTitle(kind)}
                 </h4>
               </div>
               <div className="ai-skel" aria-hidden="true">
@@ -259,11 +248,11 @@ export default function Improve({
               <div className="ai-actions">
                 {state.retry && (
                   <button type="button" className="btn secondary" onClick={() => void ask()}>
-                    Try again
+                    {t.ai.tryAgain}
                   </button>
                 )}
                 <button type="button" className="btn quiet" onClick={close}>
-                  Close
+                  {t.ai.close}
                 </button>
               </div>
             </>
@@ -287,6 +276,7 @@ function Suggestions({
   toggle: (indexes: number[], on: boolean) => void;
   close: () => void;
 }) {
+  const t = useT();
   const { reply, originals, used } = state;
   /* One row for each block that was sent. The reply lines up with them, and a
      line that is missing leaves the original as it was. */
@@ -304,9 +294,9 @@ function Suggestions({
       <div className="ai-head">
         <h4 className="ai-title" id={headingId}>
           <Icon name="sparkle" size={16} />
-          {rows.length > 1 ? "Suggestions" : "Suggestion"}
+          {rows.length > 1 ? t.ai.suggestions : t.ai.suggestion}
         </h4>
-        <span className="ai-left">{left > 0 ? `${left} left today` : "That was your last one today"}</span>
+        <span className="ai-left">{left > 0 ? t.ai.leftToday(left) : t.ai.lastToday}</span>
         {changed.length > 1 && (
           <button
             type="button"
@@ -318,10 +308,10 @@ function Suggestions({
               )
             }
           >
-            {allUsed ? "Undo all" : "Use all"}
+            {allUsed ? t.ai.undoAll : t.ai.useAll}
           </button>
         )}
-        <IconButton icon="close" label="Close suggestions" onClick={close} />
+        <IconButton icon="close" label={t.ai.closeSuggestions} onClick={close} />
       </div>
 
       <ol className="ai-list">
@@ -335,11 +325,11 @@ function Suggestions({
                 ) : (
                   <>
                     <p className="ai-before">
-                      <span className="ai-tag">Before</span>
+                      <span className="ai-tag">{t.ai.before}</span>
                       <span>{row.before}</span>
                     </p>
                     <p className="ai-after">
-                      <span className="ai-tag">After</span>
+                      <span className="ai-tag">{t.ai.after}</span>
                       <span className="ai-text" dangerouslySetInnerHTML={{ __html: row.shown }} />
                     </p>
                   </>
@@ -348,17 +338,17 @@ function Suggestions({
               {row.same ? (
                 <span className="ai-same">
                   <Icon name="check" size={14} />
-                  Already reads well
+                  {t.ai.alreadyGood}
                 </span>
               ) : (
                 <button
                   type="button"
                   className={"ai-use" + (on ? " on" : "")}
-                  aria-label={`${on ? "Undo" : "Use"} suggestion ${row.index + 1}`}
+                  aria-label={on ? t.ai.undoLabel(row.index + 1) : t.ai.useLabel(row.index + 1)}
                   onClick={() => toggle([row.index], !on)}
                 >
                   {on && <Icon name="check" size={14} />}
-                  {on ? "Undo" : "Use"}
+                  {on ? t.ai.undo : t.ai.use}
                 </button>
               )}
             </li>
