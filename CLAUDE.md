@@ -46,5 +46,16 @@ Rules the privacy page promises, so the code must keep them:
   Nothing logs a request body.
 - The model's reply is rich text from outside: `sanitizeServer` cleans it in
   the route, and `sanitize` cleans it again in the browser.
+- Sign-in keeps no IP address, browser string, Google profile photo link or
+  Google token. `makeHooks` in `src/lib/server/auth-hooks.ts` blanks them, and
+  `tests/auth-hooks.test.ts` runs the real Better Auth to prove it.
+- How long the server keeps data lives in `src/lib/keep.ts`. `retention.ts`
+  enforces it and the privacy page prints it, so change the numbers there and
+  nowhere else.
+- Anything new that stores or sends personal data needs a line on the privacy
+  page and a row in `docs/compliance.md` before it ships.
+- The security headers live in `next.config.ts`. A new host, script or frame
+  needs an entry in its Content Security Policy first. Test it on a production
+  build, because dev mode relaxes the policy.
 
 Prose, UI copy and commit messages use the plain hyphen, never an em or en dash.
