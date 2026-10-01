@@ -169,11 +169,18 @@ day once it has spent about 65 cents, which keeps a month under $20. Set
 
 The database (Neon Postgres) holds the accounts and one row per rewrite: who,
 when, how many tokens, and whether the suggestion was used. It never stores
-the text.
+the text. Sessions keep no IP address or browser string, and sign-in saves
+neither Google's tokens nor the photo link (`src/lib/server/auth-hooks.ts`).
+
+Old data goes on a schedule. A session lasts 7 days after its last use, a
+rewrite row 12 months, and an account with no rewrite for 12 months is
+deleted. The windows are in `src/lib/keep.ts`, and `src/lib/server/retention.ts`
+runs the deletes, at most once an hour, after a sign-in or a rewrite.
 
 | Variable | What it is |
 | --- | --- |
 | `DATABASE_URL` | The Neon database. Vercel's Neon integration sets it. |
+| `OPERATOR_ADDRESS` | The postal address the privacy page prints. Ley 25.326 asks for it. Pages are built ahead of time, so deploy again after you set it. |
 | `BETTER_AUTH_SECRET` | A random secret that signs sessions: `openssl rand -base64 32`. |
 | `BETTER_AUTH_URL` | The site's own address: `https://cv-editor-ruby.vercel.app`, or `http://localhost:3000` in development. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | A Google Cloud OAuth client of type "Web application". |
@@ -193,6 +200,19 @@ vercel env pull .env.local
 ```bash
 npm run db:migrate
 ```
+
+## Privacy, terms and headers
+
+The privacy page and the terms are written for Argentina's data law (Ley 25.326)
+and cover the EU basics too. `docs/compliance.md` lists which rules apply,
+where each lives in the code, and what only the person who runs the site can
+do, such as registering the database with the AAIP.
+
+`next.config.ts` sends a Content Security Policy and four more security
+headers on every response. The policy lets a page load only from the site
+itself, so a new host, script or frame needs an entry there. Check it on a
+production build (`npm run build`, then `npm start`), because dev mode
+relaxes it.
 
 ## Tests
 
@@ -234,6 +254,8 @@ npm run typecheck
 | `src/lib/ai.ts` | What the AI button sends and gets back, and its limits |
 | `src/lib/ai-diff.ts` | Marks the words an AI suggestion changed |
 | `src/lib/sign-in.ts` | The browser's side of Google sign-in |
+| `src/lib/keep.ts` | How long the server keeps sessions, rewrite rows and idle accounts |
+| `src/lib/operator.ts` | Who runs the site, for the privacy page and the terms |
 | `src/lib/server/` | Chrome, the PDF and its metadata, the server's sanitizer, sign-in, the database, the model call and its usage counts |
 | `src/app/api/pdf/route.ts` | The PDF route |
 | `src/app/api/ai/` | The AI routes: rewrite, accept, usage |
@@ -243,6 +265,7 @@ npm run typecheck
 | `src/components/steps/` | One file per kind of step: About you, jobs, skills, languages, summary |
 | `src/components/ui/` | The boxes that suggest, the suggestion list, chips, popovers and the Enter flow |
 | `scripts/migrate.mjs` | Creates the database tables |
+| `docs/compliance.md` | Which laws apply, where each duty lives in the code, and what is still open |
 | `public/fonts/` | PT Sans, PT Serif and Inter, copied from `@fontsource` by `npm run fonts` |
 
 ## Fonts
