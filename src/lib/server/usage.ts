@@ -1,5 +1,6 @@
 import { pool } from "./db";
 import type { Tokens } from "./rewrite";
+import { purgeSoon } from "./retention";
 
 /* One row per AI request: who asked, when, how many tokens it took, and
    whether the suggestion was used. No text is kept. The limits and the
@@ -40,6 +41,9 @@ export async function record(userId: string, tokens: Tokens, ok: boolean): Promi
     `insert into ai_log (user_id, ok, input_tokens, output_tokens) values ($1, $2, $3, $4) returning id`,
     [userId, ok, tokens.input, tokens.output],
   );
+  /* The database is awake and a person is here, so this is a good moment to
+     clear out what has expired. It runs after the reply, at most once an hour. */
+  purgeSoon();
   return String(rows[0].id);
 }
 
