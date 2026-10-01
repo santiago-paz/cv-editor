@@ -426,13 +426,17 @@ ul { list-style: none; margin: 0; padding: 0; }
 .title-box input { font: 700 24px/1.1 var(--display); letter-spacing: -.02em; }
 
 .nav {
-  display: flex; align-items: center; gap: 10px; flex: none; padding: 14px 24px max(14px, env(safe-area-inset-bottom));
+  display: grid; gap: 10px; flex: none; padding: 14px 24px max(14px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--line); background: var(--surface);
 }
+.nav-row { display: flex; align-items: center; gap: 10px; }
 .nav .primary { flex: 1; justify-content: space-between; min-height: 50px; padding: 0 14px 0 20px; font-size: 15.5px; }
 .nav .primary:only-child { justify-content: center; }
 .nav .back { order: -1; padding: 0 12px; }
 .nav .primary.center { justify-content: center; padding: 0 20px; }
+.nav-note { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-3); text-align: center; text-wrap: balance; }
+.nav-note a, .menu-note a { text-underline-offset: 3px; }
+.nav-note a:hover, .menu-note a:hover { color: var(--ink); }
 
 /* ---------------------------------------------------------- fields and boxes */
 
@@ -709,6 +713,7 @@ ul { list-style: none; margin: 0; padding: 0; }
 .doc p { margin: 0 0 14px; }
 .doc ul { display: grid; gap: 10px; margin: 0 0 14px; padding-left: 22px; list-style: disc; }
 .doc li::marker { color: var(--klein); }
+.doc code { font-size: .88em; overflow-wrap: anywhere; }
 .doc a:not(.doc-brand):not(.doc-back) { color: var(--klein); text-underline-offset: 3px; }
 
 /* ------------------------------------------------------------- the stage */

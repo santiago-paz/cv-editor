@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { section as newSection } from "@/lib/cv/defaults";
@@ -295,28 +296,43 @@ export default function Panel({
       </div>
 
       <footer className="nav">
-        {next ? (
-          <button ref={nextButton} type="button" className="btn primary" onClick={() => go(next.id, true)}>
-            <span>
-              Next: <b>{next.label}</b>
-            </span>
-            <span className="keys">
-              <Key>{mod}</Key>
-              <Key>↵</Key>
-            </span>
-          </button>
-        ) : (
-          <button ref={nextButton} type="button" className="btn primary center" onClick={onDownload} disabled={busy}>
-            <Icon name="download" />
-            <span>{busy ? "Making the PDF…" : "Download the PDF"}</span>
-          </button>
-        )}
-        {at > 0 && (
-          <button type="button" className="btn quiet back" onClick={() => go(steps[at - 1].id, true)}>
-            <Icon name="arrowLeft" />
-            <span>Back</span>
-          </button>
-        )}
+        <div className="nav-row">
+          {next ? (
+            <button ref={nextButton} type="button" className="btn primary" onClick={() => go(next.id, true)}>
+              <span>
+                Next: <b>{next.label}</b>
+              </span>
+              <span className="keys">
+                <Key>{mod}</Key>
+                <Key>↵</Key>
+              </span>
+            </button>
+          ) : (
+            <button ref={nextButton} type="button" className="btn primary center" onClick={onDownload} disabled={busy}>
+              <Icon name="download" />
+              <span>{busy ? "Making the PDF…" : "Download the PDF"}</span>
+            </button>
+          )}
+          {at > 0 && (
+            <button type="button" className="btn quiet back" onClick={() => go(steps[at - 1].id, true)}>
+              <Icon name="arrowLeft" />
+              <span>Back</span>
+            </button>
+          )}
+        </div>
+        {/* Said where the PDF button is, because the PDF is what sends a whole CV to a server. */}
+        <p className="nav-note">
+          PDFs and AI rewrites run on servers in the US.{" "}
+          <Link href="/privacy" target="_blank" rel="noopener">
+            Privacy
+            <span className="sr-only"> (opens in a new tab)</span>
+          </Link>
+          <span aria-hidden="true"> · </span>
+          <Link href="/terms" target="_blank" rel="noopener">
+            Terms
+            <span className="sr-only"> (opens in a new tab)</span>
+          </Link>
+        </p>
       </footer>
     </section>
   );

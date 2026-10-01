@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LIMITS } from "@/lib/ai";
 import { authClient } from "@/lib/auth-client";
@@ -91,6 +92,19 @@ export default function Account() {
             {going ? "Opening Google…" : "Continue with Google"}
           </button>
         </div>
+        <p className="menu-note">
+          Your data is processed in the United States. By continuing you accept the{" "}
+          <Link href="/terms" target="_blank" rel="noopener">
+            Terms
+            <span className="sr-only"> (opens in a new tab)</span>
+          </Link>{" "}
+          and the{" "}
+          <Link href="/privacy" target="_blank" rel="noopener">
+            Privacy page
+            <span className="sr-only"> (opens in a new tab)</span>
+          </Link>
+          .
+        </p>
         {failed && (
           <p className="menu-note bad" role="alert">
             Could not start the sign-in. Try again in a minute.

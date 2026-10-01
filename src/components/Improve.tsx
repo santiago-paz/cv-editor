@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { markNew, sameWords } from "@/lib/ai-diff";
 import { LIMITS, type RewriteReply } from "@/lib/ai";
@@ -201,6 +202,20 @@ export default function Improve({
               <p className="ai-say">
                 AI rewrites need a Google account. They are free while we test them, up to {LIMITS.day} a day. Your CVs
                 stay in this browser.
+              </p>
+              <p className="menu-note">
+                The text you send goes to Anthropic&apos;s Claude, in the United States, to write the suggestion. By
+                continuing you accept the{" "}
+                <Link href="/terms" target="_blank" rel="noopener">
+                  Terms
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </Link>{" "}
+                and the{" "}
+                <Link href="/privacy" target="_blank" rel="noopener">
+                  Privacy page
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </Link>
+                .
               </p>
               <div className="ai-actions">
                 <button type="button" className="google-button" disabled={state.going} onClick={() => void signIn()}>
