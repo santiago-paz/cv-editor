@@ -8,6 +8,7 @@ import type { Cv, Section } from "@/lib/cv/types";
 import { textOf } from "@/lib/html";
 import { SECTION_CHOICES, type SectionChoice } from "@/lib/suggest/data/misc";
 import { fold } from "@/lib/suggest/text";
+import DownloadMenu, { type PdfControls } from "./DownloadMenu";
 import { Icon, Key } from "./icons";
 import { LanguagesStep } from "./steps/Languages";
 import { SectionStep } from "./steps/Sections";
@@ -85,8 +86,7 @@ export default function Panel({
   onStep,
   summaryLines,
   photo,
-  onDownload,
-  busy,
+  pdf,
   onFocusPath,
   onNew,
 }: {
@@ -97,8 +97,7 @@ export default function Panel({
   onStep: (step: StepId) => void;
   summaryLines: number | null;
   photo: ReactNode;
-  onDownload: () => void;
-  busy: boolean;
+  pdf: PdfControls;
   /** The path of the box that has focus, for the preview to light. */
   onFocusPath: (path: string | null) => void;
   /** Starts a blank CV, offered when the open one is the sample. */
@@ -308,10 +307,7 @@ export default function Panel({
               </span>
             </button>
           ) : (
-            <button ref={nextButton} type="button" className="btn primary center" onClick={onDownload} disabled={busy}>
-              <Icon name="download" />
-              <span>{busy ? "Making the PDF…" : "Download the PDF"}</span>
-            </button>
+            <DownloadMenu pdf={pdf} buttonRef={nextButton} />
           )}
           {at > 0 && (
             <button type="button" className="btn quiet back" onClick={() => go(steps[at - 1].id, true)}>
@@ -320,9 +316,9 @@ export default function Panel({
             </button>
           )}
         </div>
-        {/* Said where the PDF button is, because the PDF is what sends a whole CV to a server. */}
+        {/* Said where the PDF button is, because the PDF file download is what sends a whole CV to a server. */}
         <p className="nav-note">
-          PDFs and AI rewrites run on servers in the US.{" "}
+          Save as PDF stays on your device. The PDF file download and AI rewrites run on servers in the US.{" "}
           <Link href="/privacy" target="_blank" rel="noopener">
             Privacy
             <span className="sr-only"> (opens in a new tab)</span>

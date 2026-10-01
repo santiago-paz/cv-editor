@@ -267,6 +267,42 @@ ul { list-style: none; margin: 0; padding: 0; }
 .menu-text small { display: block; margin-top: 1px; font-weight: 450; font-size: 13px; color: var(--ink-2); }
 .menu[role="menu"] > .menu-note { padding: 10px 12px; }
 
+/* The PDF button: a main part that does the usual thing, and a caret that
+   opens the other ways. The two parts share one rounded shape. */
+.split { display: inline-flex; flex: none; }
+.split .split-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.split .split-caret {
+  min-width: 34px; padding: 0 9px; border-top-left-radius: 0; border-bottom-left-radius: 0;
+  border-left-color: color-mix(in srgb, var(--on-action) 32%, transparent);
+}
+/* In the foot of the writing side the button takes the whole row. */
+/* While the server makes a file the buttons look off and take no clicks, but
+   stay in the keyboard's reach. */
+.split [aria-disabled="true"] { opacity: .5; cursor: default; pointer-events: none; }
+.nav .split { flex: 1; }
+.nav .split .btn.primary { min-height: 50px; font-size: 15.5px; }
+.nav .split .split-main { flex: 1; justify-content: center; padding: 0 20px; }
+.nav .split .split-caret { flex: none; justify-content: center; padding: 0 16px; }
+@media (forced-colors: active) {
+  .split .split-caret { border-left-color: ButtonText; }
+}
+
+/* The two ways to get the PDF, each with what it does and where the CV goes. */
+.menu-ways[role="menu"] { width: min(372px, calc(100vw - 24px)); }
+.way { align-items: flex-start; }
+.way > .icon { margin-top: 2px; }
+.way .menu-text { flex: 1; min-width: 0; }
+.way-title { display: flex; align-items: center; gap: 8px; }
+.way-title .keys { margin-left: auto; color: var(--ink-2); }
+.way-tag {
+  padding: 1px 7px; border-radius: 6px; background: var(--marker-soft); color: var(--ink);
+  font-size: 12px; font-weight: 650; line-height: 1.5;
+}
+.menu-text small.way-caution { color: var(--warn); }
+.way-fact { display: flex; align-items: center; gap: 6px; margin-top: 7px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.way-fact.stays { color: var(--ok); }
+.way-fact .icon { color: inherit; }
+
 .plain-input {
   width: 100%; height: 44px; padding: 0 14px; border: 1.5px solid transparent; border-radius: 12px;
   background: var(--fill); color: var(--ink); font: 550 15.5px/1.2 var(--sans);

@@ -44,12 +44,14 @@ When you change how data is kept, change the page in the same commit.
 
 | Activity | Data | Goes to | Basis | Kept |
 | --- | --- | --- | --- | --- |
-| Make a PDF | The whole CV, with the photo if it is on | Vercel, United States | The person asks for it | Not kept |
+| Download a PDF file | The whole CV, with the photo if it is on | Vercel, United States | The person picks it, or uses the main button on a phone or tablet | Not kept |
 | AI rewrite | One block of text, its title, dates and language | Anthropic, United States | The person asks for it and agrees at sign-in | We keep nothing. Anthropic deletes it within 30 days. |
 | Account | Name, email, Google account ID | Neon, United States | The person makes it and agrees to it | Until deleted, or 12 months with no rewrite |
 | Session | A random token and an expiry date | Neon | Needed to stay signed in | 7 days after last use |
 | Rewrite count | Time, tokens, success, whether it was used | Neon | Legitimate interest: limits and budget | 12 months |
 | Hosting logs | IP address, request path | Vercel | Legitimate interest: delivery and the PDF limit | Vercel's schedule |
+
+Save as PDF, the main button on a computer, is not a row here. The browser makes the file on the person's device, and nothing is sent.
 
 ## Processors and contracts
 

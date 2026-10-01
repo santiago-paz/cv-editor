@@ -3,6 +3,7 @@
 import type { Cv } from "@/lib/cv/types";
 import type { Ui } from "@/lib/storage";
 import CvMenu from "./CvMenu";
+import DownloadMenu, { type PdfControls } from "./DownloadMenu";
 import { Icon, Mark } from "./icons";
 import SettingsMenu from "./SettingsMenu";
 import StyleMenu from "./StyleMenu";
@@ -20,7 +21,7 @@ export default function TopBar({
   tabOnly,
   ui,
   onUi,
-  busy,
+  pdf,
   onOpen,
   onNew,
   onSample,
@@ -30,7 +31,6 @@ export default function TopBar({
   onTabOnly,
   onBackup,
   onRestore,
-  onDownload,
 }: {
   cv: Cv | null;
   cvs: Cv[];
@@ -39,7 +39,7 @@ export default function TopBar({
   tabOnly: boolean;
   ui: Ui;
   onUi: (change: Partial<Ui>) => void;
-  busy: boolean;
+  pdf: PdfControls;
   onOpen: (id: string) => void;
   onNew: () => void;
   onSample: () => void;
@@ -49,7 +49,6 @@ export default function TopBar({
   onTabOnly: (on: boolean) => void;
   onBackup: () => void;
   onRestore: (file: File) => void;
-  onDownload: () => void;
 }) {
   /* Everything saves as you type, so a plain save needs one word. Only the tab
      that forgets says where, and a failure says why. */
@@ -96,12 +95,7 @@ export default function TopBar({
           onBackup={onBackup}
           onRestore={onRestore}
         />
-        <button type="button" className="btn primary" onClick={onDownload} disabled={!cv || busy} aria-label={busy ? "Making the PDF" : "Download PDF"}>
-          <Icon name="download" />
-          <span className="hide-tiny btn-label" data-more={busy ? "" : " PDF"}>
-            {busy ? "Making the PDF…" : "Download"}
-          </span>
-        </button>
+        <DownloadMenu pdf={pdf} disabled={!cv} />
       </div>
     </header>
   );

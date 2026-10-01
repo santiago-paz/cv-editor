@@ -34,6 +34,10 @@ pill at the foot of the preview says how full the last page is.
 - A page pill with the page count, how full the last page is, and how much
   paper is left empty when an entry moves to the next page. The editor also
   flags a heading left alone at the foot of a page.
+- Two ways to get the PDF. The main button, Save as PDF, opens your browser's
+  print dialog, so the CV never leaves your device. The arrow beside it offers
+  Download a PDF file, which has the server print the CV with Chrome. Its menu
+  says what each way does and where your CV goes.
 - A photo you can crop by dragging and zooming, with the print resolution shown
   as you go. Every CV uses the same photo, and each one can leave it out.
 - The Style menu holds the layout, seven rail colors or any hex value (with a
@@ -83,21 +87,50 @@ first time a language is used.
 
 ## How the PDF is made
 
-The browser sends the CV to `POST /api/pdf`. The server builds the HTML from that
-data, prints it with headless Chrome, writes the title, author and keywords into
-the PDF's metadata, and sends the file back. It keeps no copy of the CV or the PDF.
+There are two ways. The main button takes one, and the arrow beside it offers
+the other. The menu behind the arrow says what each does.
+
+| | Save as PDF | Download a PDF file |
+| --- | --- | --- |
+| Who makes the file | Your browser | Our server, with headless Chrome |
+| Where the CV goes | Nowhere. It stays on your device. | To the server for a moment. It keeps no copy. |
+| Steps | Choose Save as PDF in the print dialog | One click |
+| Author, keywords and language in the file | No | Yes |
+| Page breaks | The browser's own. The tests check Chrome only. | The same as the preview |
+| Main button | On a computer | On a phone or tablet |
+
+**Save as PDF.** The editor builds the same HTML and fonts as the preview, loads
+them in a hidden frame and opens the browser's print dialog. Chrome suggests the
+page's title as the file name, so the page wears the file's name while the
+dialog is open. Cmd or Ctrl + P opens the same dialog. Nothing is sent, and
+nothing needs a server.
+
+**Download a PDF file.** The browser sends the CV to `POST /api/pdf`. The server
+builds the HTML from that data, prints it with headless Chrome, writes the
+title, author and keywords into the PDF's metadata, and sends the file back. It
+keeps no copy of the CV or the PDF. A phone or tablet gets this as the main
+button because its browser tends to print the page around a hidden frame, not
+the frame.
 
 The page Chrome prints from is locked down. The server builds the markup from
 checked data and never takes HTML from the request, and it cleans rich text
 again. A Content Security Policy blocks scripts, and the page may load nothing
 but its own fonts, which the server reads from disk.
 
-If the server can't make the PDF, the editor offers the browser's own print
-dialog instead. Choose "Save as PDF" there.
+Both templates keep their page margins out of `@page`. A browser prints its
+header and footer (the date, the address, the page number) into any `@page`
+margin, and the print dialog has them on by default. Each template takes its top
+and bottom margins from the first and last rows of a table, which repeat on every
+page, and sets `@page` to 0, so there is nowhere for that text to go.
+`tests/pdf.test.ts` checks it.
+
+If the server can't make the file, the editor offers Save as PDF instead. If the
+print dialog can't open, it offers the file download.
 
 ## Run it
 
-You need Node.js 20.9 or later and Google Chrome.
+You need Node.js 20.9 or later. Save as PDF needs nothing more. Google Chrome is
+for the PDF file download and for two of the tests.
 
 ```bash
 npm install
@@ -223,13 +256,13 @@ npm test
 The tests cover the sanitizer (browser and server must agree), the templates'
 escaping, the checks that repair an imported backup, storage, the page math,
 what the AI button may send, how its reply gets cleaned and how its changes are
-marked, what the editor says when the server won't make a PDF, and the
-suggestions: every list, the matching, the dates, the job families and the
-sources each box reads.
-Two of them start Chrome: one prints CVs and reads the text back with
-`pdftotext`, and one checks that the preview's page breaks land where the PDF
-breaks. Both skip themselves when Chrome is missing, and the text checks need
-poppler (`brew install poppler`).
+marked, what the editor says when the server won't make a PDF, how the print
+dialog opens and cleans up, and the suggestions: every list, the matching, the
+dates, the job families and the sources each box reads.
+Two of them start Chrome: one prints CVs, reads the text back with `pdftotext`
+and checks that no browser header or footer lands on the page, and one checks
+that the preview's page breaks land where the PDF breaks. Both skip themselves
+when Chrome is missing, and the text checks need poppler (`brew install poppler`).
 
 ```bash
 npm run lint
@@ -249,6 +282,7 @@ npm run typecheck
 | `src/lib/measure.ts` | Reads the preview's layout for that math |
 | `src/lib/storage.ts` | localStorage, the tab that forgets its CVs, and backups |
 | `src/lib/site.ts` | The Donate and author links |
+| `src/lib/download.ts` | The two ways to get the PDF: the print dialog and the file from the server |
 | `src/lib/suggest/` | The suggestion engine: ranking, dates, history, the catalogs and what each box reads |
 | `src/lib/suggest/data/` | The lists: titles, skills, degrees, companies, schools, cities and the job families |
 | `src/lib/ai.ts` | What the AI button sends and gets back, and its limits |
@@ -262,6 +296,7 @@ npm run typecheck
 | `src/app/api/auth/` | Sign-in, handled by Better Auth |
 | `src/app/privacy/`, `src/app/terms/` | The privacy page and the terms |
 | `src/components/` | The editor: top bar, panel, stage, menus |
+| `src/components/DownloadMenu.tsx` | The PDF button and the menu that explains its two ways |
 | `src/components/steps/` | One file per kind of step: About you, jobs, skills, languages, summary |
 | `src/components/ui/` | The boxes that suggest, the suggestion list, chips, popovers and the Enter flow |
 | `scripts/migrate.mjs` | Creates the database tables |

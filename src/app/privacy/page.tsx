@@ -30,12 +30,17 @@ export default function Privacy() {
         on &quot;Forget my CVs when I close this tab&quot; in Settings, they stay in that tab only, and closing it
         deletes them. To keep a copy somewhere else, use Back up in Settings.
       </p>
+      <p>
+        Save as PDF, the main button on a computer, makes the file in your browser with its own print dialog. It
+        sends nothing.
+      </p>
 
       <h2>When your CV reaches our server</h2>
       <ul>
         <li>
-          When you download a PDF, your browser sends the CV to our server. The server prints it and sends the file
-          back. It keeps no copy of the CV or the PDF, and no log of either.
+          When you choose Download a PDF file, your browser sends the CV to our server. The server prints it and
+          sends the file back. It keeps no copy of the CV or the PDF, and no log of either. On a phone or tablet, the
+          main button does this.
         </li>
         <li>
           When you use &quot;Improve with AI&quot;, your browser sends that block&apos;s text, the job title or
@@ -107,7 +112,7 @@ export default function Privacy() {
       </ul>
       <p>
         Argentina does not list the United States as a country with adequate data protection. When you sign in,
-        download a PDF or use the AI, you agree that your data is processed there. We use Vercel, Neon and
+        choose Download a PDF file or use the AI, you agree that your data is processed there. We use Vercel, Neon and
         Anthropic under their data processing terms.
       </p>
 

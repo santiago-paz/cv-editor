@@ -2,9 +2,11 @@
 
 # CV Editor
 
-A CV editor that keeps CVs in the browser's localStorage and prints them to PDF
-with headless Chrome in `src/app/api/pdf/route.ts`. An optional Google account
-adds AI rewrites (`src/app/api/ai/`). See README.md.
+A CV editor that keeps CVs in the browser's localStorage. The main button makes
+the PDF in the browser, through the print dialog. A second way prints it with
+headless Chrome in `src/app/api/pdf/route.ts`. `src/lib/download.ts` holds both,
+and `src/components/DownloadMenu.tsx` explains them to the person. An optional
+Google account adds AI rewrites (`src/app/api/ai/`). See README.md.
 
 Rules that keep the preview and the PDF in step:
 
@@ -14,6 +16,11 @@ Rules that keep the preview and the PDF in step:
   (`.entry` never splits, an `<h2>` travels with the block under it). After a
   change to either, run `npm test`: `tests/pagination.test.ts` prints real PDFs
   and fails when the preview's cuts drift from Chrome's.
+- Both templates set `@page { margin: 0 }` and take their top and bottom
+  margins from the spacer cells of a table (`flow` and `spacers` in
+  `src/lib/cv/templates/index.ts`). A browser prints its header and footer into
+  any `@page` margin, and the print dialog has them on, so a margin there puts
+  the date and the address on someone's CV. `tests/pdf.test.ts` checks it.
 - Rich text is cleaned twice, by `src/lib/sanitize.ts` in the browser and
   `src/lib/server/sanitize.ts` on the server. `tests/sanitize.test.ts` runs every
   case through both; they must agree.
@@ -41,6 +48,10 @@ Rules the privacy page promises, so the code must keep them:
 
 - CVs never live on the server. The PDF route and the AI route read what they
   are sent and keep nothing.
+- Save as PDF, the main button on a computer, sends nothing: the browser makes
+  the file. The CV reaches the PDF route only when the person picks Download a
+  PDF file, or on a phone or tablet, where that is the main button. The menu
+  beside the button and the privacy page say so, so change all three together.
 - The AI route sends the model only a block's text, its title, the job's
   dates and the CV's language. The `ai_log` table stores counts, never text.
   Nothing logs a request body.

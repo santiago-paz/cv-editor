@@ -27,6 +27,15 @@ const ICONS = {
   trash: { paths: ["M3 4.5h10M6.25 4.5V3h3.5v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5"] },
   copy: { paths: ["M5.5 5.5h7v7h-7zM3.5 10.5v-7h7"] },
   download: { paths: ["M8 2.5v7M5 6.75l3 3 3-3M3 12.5h10"] },
+  print: { paths: ["M4.5 6V2.5h7V6", "M4.5 11.5h-2v-5h11v5h-2", "M4.5 9.5h7v4h-7z"] },
+  lock: { paths: ["M4.5 7.5h7V13h-7z", "M6 7.5V5.75a2 2 0 0 1 4 0V7.5"], dots: [[8, 10.2, 0.9]] },
+  server: {
+    paths: ["M3 3.5h10V7H3z", "M3 9h10v3.5H3z"],
+    dots: [
+      [5.2, 5.25, 0.8],
+      [5.2, 10.75, 0.8],
+    ],
+  },
   up: { paths: ["M8 12.5v-9M4.5 7 8 3.5 11.5 7"] },
   arrowDown: { paths: ["M8 3.5v9M4.5 9 8 12.5 11.5 9"] },
   arrowRight: { paths: ["M3 8h10M9 4l4 4-4 4"] },

@@ -11,7 +11,7 @@ import { sampleCv } from "@/lib/cv/sample";
 import { sanitizeCv } from "@/lib/cv/sanitize-cv";
 import { TEMPLATES } from "@/lib/cv/templates";
 import type { Cv, Photo } from "@/lib/cv/types";
-import { fetchPdf, printCv, saveBlob } from "@/lib/download";
+import { defaultWay, fetchPdf, printCv, saveBlob } from "@/lib/download";
 import { sanitize } from "@/lib/sanitize";
 import { returnedFromSignIn, whoIsSignedIn } from "@/lib/sign-in";
 import { DONATE_URL } from "@/lib/site";
@@ -34,6 +34,7 @@ import {
   watch,
   type Ui,
 } from "@/lib/storage";
+import type { PdfControls } from "./DownloadMenu";
 import { Icon } from "./icons";
 import Panel, { stepForPath, stepsOf, type StepId } from "./Panel";
 import PhotoPane from "./PhotoPane";
@@ -88,7 +89,11 @@ export default function Editor() {
   const [measure, setMeasure] = useState<Measure | null>(null);
   const [placing, setPlacing] = useState<string | null>(null);
   const [focusPath, setFocusPath] = useState<string | null>(null);
+  /* The server is making a PDF file. Printing from the browser is not busy
+     work: the dialog takes over the screen. */
   const [busy, setBusy] = useState(false);
+  /* What the main PDF button does. It stays the same for the whole visit. */
+  const [way] = useState(defaultWay);
   const [tabOnly, setTabOnly] = useState(boot.tabOnly);
   const toast = useToast();
   /* The first PDF of a visit mentions donations. Later ones do not. */
@@ -426,33 +431,57 @@ export default function Editor() {
 
   /* ---------------------------------------------------------- download */
 
-  async function download() {
-    if (!cv || busy) return;
-    if (isBlank(cv)) {
-      flushSync(() => {
-        setStep("you");
-        setView("edit");
+  /* There are two ways to get the PDF (see lib/download.ts), and both start
+     here: an empty CV has nothing to print, so say so and put the caret where
+     the CV starts. */
+  function printable(): boolean {
+    if (!cv) return false;
+    if (!isBlank(cv)) return true;
+    flushSync(() => {
+      setStep("you");
+      setView("edit");
+    });
+    focusName();
+    say("The CV is empty. Add your name and job title first.");
+    return false;
+  }
+
+  /* The first PDF of a visit asks for a donation, after what `lead` says. */
+  function thank(lead: string) {
+    if (DONATE_URL && !askedToDonate.current) {
+      askedToDonate.current = true;
+      const ask = "If the editor helped, you can support it with a donation.";
+      toast.show(lead ? `${lead}. ${ask}` : ask, { action: { label: "Donate", href: DONATE_URL }, ms: 10_000 });
+    } else if (lead) toast.show(lead);
+  }
+
+  /* The browser's print dialog. The CV never leaves this device. */
+  async function savePdf() {
+    if (!cv || !printable()) return;
+    try {
+      await printCv(cv, photo?.src ?? null);
+      thank("");
+    } catch {
+      toast.show("The print dialog did not open. You can download a PDF file instead.", {
+        action: { label: "Download file", run: () => void downloadFile() },
+        ms: 10_000,
       });
-      focusName();
-      say("The CV is empty. Add your name and job title first.");
-      return;
     }
+  }
+
+  /* A file from the server. The CV goes over the network once and is not kept. */
+  async function downloadFile() {
+    if (!cv || busy || !printable()) return;
     setBusy(true);
     try {
       const blob = await fetchPdf(cv, photo?.src ?? null);
       const name = fileName(cv);
       saveBlob(blob, name);
-      if (DONATE_URL && !askedToDonate.current) {
-        askedToDonate.current = true;
-        toast.show(`Downloaded ${name}. If the editor helped, you can support it with a donation.`, {
-          action: { label: "Donate", href: DONATE_URL },
-          ms: 10_000,
-        });
-      } else toast.show(`Downloaded ${name}`);
+      thank(`Downloaded ${name}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "The PDF could not be made.";
-      toast.show(`${message} Your browser can print it to PDF instead.`, {
-        action: { label: "Print instead", run: () => printCv(cv, cv.showPhoto ? (photo?.src ?? null) : null) },
+      toast.show(`${message} You can save it from your browser's print dialog instead.`, {
+        action: { label: "Save as PDF", run: () => void savePdf() },
         ms: 10_000,
       });
     } finally {
@@ -460,8 +489,15 @@ export default function Editor() {
     }
   }
 
+  const pdf: PdfControls = { way, busy, onPrint: () => void savePdf(), onFile: () => void downloadFile() };
+
   /* Cmd/Ctrl+S would save the page's HTML, and Cmd/Ctrl+P would print the
-     editor itself. Neither is what anyone pressing them wants here. */
+     editor itself. Neither is what anyone pressing them wants here. P opens
+     the print dialog on the CV, whichever way the main button takes. */
+  const printNow = useRef(savePdf);
+  useLayoutEffect(() => {
+    printNow.current = savePdf;
+  });
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
@@ -473,12 +509,12 @@ export default function Editor() {
       }
       if (key === "p" && cv) {
         event.preventDefault();
-        printCv(cv, cv.showPhoto ? (photo?.src ?? null) : null);
+        void printNow.current();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cv, photo, flush, toast, tabOnly]);
+  }, [cv, flush, toast, tabOnly]);
 
   /* ---------------------------------------------------- click to edit */
 
@@ -525,7 +561,7 @@ export default function Editor() {
         tabOnly={tabOnly}
         ui={ui}
         onUi={setPrefs}
-        busy={busy}
+        pdf={pdf}
         onOpen={openCv}
         onNew={newCv}
         onSample={() => addCv(sampleCv(), false)}
@@ -535,7 +571,6 @@ export default function Editor() {
         onTabOnly={chooseTabOnly}
         onBackup={backUp}
         onRestore={file => void restore(file)}
-        onDownload={() => void download()}
       />
 
       <main className="work">
@@ -548,8 +583,7 @@ export default function Editor() {
               step={currentStep}
               onStep={setStep}
               summaryLines={measure?.summaryLines ?? null}
-              onDownload={() => void download()}
-              busy={busy}
+              pdf={pdf}
               onFocusPath={setFocusPath}
               onNew={newCv}
               photo={

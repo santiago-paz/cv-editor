@@ -1,3 +1,8 @@
+/** The modifier key as a key cap shows it: "⌘" on a Mac, "Ctrl" elsewhere. */
+export function modKey(): string {
+  return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘" : "Ctrl";
+}
+
 /** Moves one item of a list, in place. For use inside an immer recipe. */
 export function move<T>(list: T[], from: number, to: number): void {
   if (to < 0 || to >= list.length || from === to) return;
