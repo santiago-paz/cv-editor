@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in the editor, the preview or the PDF does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste a real CV or personal data here. Show the problem with the sample CV or with made-up text.
+
+        For a security problem, do not use this form. See SECURITY.md.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Say what you did and what you saw. A screenshot helps.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where it happens
+      options:
+        - Editor or suggestions
+        - Preview and page cuts
+        - Save as PDF (the print dialog)
+        - Download a PDF file (the server)
+        - AI rewrite
+        - Sign-in or account
+        - Languages and translations
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and system
+      placeholder: For example, Chrome on macOS

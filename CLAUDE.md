@@ -74,4 +74,9 @@ Rules the privacy page promises, so the code must keep them:
   needs an entry in its Content Security Policy first. Test it on a production
   build, because dev mode relaxes the policy.
 
+This repo is public. Never commit a secret, an `.env` file, a database URL, the
+operator's address, a registry or case number, or the ID of a Vercel, Neon,
+Google Cloud or Claude project. They live in the host's settings. Check each new
+file for them before the commit, because git history stays public too.
+
 Prose, UI copy and commit messages use the plain hyphen, never an em or en dash.

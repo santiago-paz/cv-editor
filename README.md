@@ -357,3 +357,15 @@ The CVs are set in PT Sans and PT Serif (Sidebar) and Inter (Classic), all under
 the SIL Open Font License. The license files sit next to the fonts in
 `public/fonts/`. They ship with the app because the server's Chromium has no
 fonts of its own, and a different face would break lines in different places.
+
+## Contributing
+
+Issues and pull requests are welcome. Read `CONTRIBUTING.md` first: it has the
+setup, the checks to run and the rules that keep the preview and the PDF in
+step. `.env.example` lists every environment variable. For a security problem,
+see `SECURITY.md`.
+
+## License
+
+MIT. See `LICENSE`. The fonts keep their own license, described under Fonts
+above.

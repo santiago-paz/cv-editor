@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/santiago-paz/cv-editor/security/advisories/new
+    about: Report security problems in private, not in a public issue.

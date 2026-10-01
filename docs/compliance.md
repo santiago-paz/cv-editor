@@ -103,28 +103,29 @@ Check that the request comes from the email on the account before you answer.
    If people in the EU or UK are affected, follow the GDPR clock of 72 hours to be safe.
 4. Write down what happened and what you changed.
 
-## Open items for the operator
+## Before you run a copy
 
-- [ ] Set `OPERATOR_ADDRESS` in Vercel for all environments, then deploy. Article 6 of Ley
-  25.326 asks the notice to give the address of the person responsible. Until you do, the
-  privacy page says to write to the email for it.
+These duties belong to the operator, because the code cannot do them.
+
+- [ ] Set `OPERATOR_ADDRESS` in your host's settings for all environments, then deploy. Article 6
+  of Ley 25.326 asks the notice to give the address of the person responsible. Until you do,
+  the privacy page says to write to the email for it.
 - [ ] Register with the AAIP: first the person responsible, then the database. It is free and
   online (Trámites a Distancia, Clave Fiscal level 2 or higher). It no longer needs an annual
   renewal, but you must update it when the database changes. The sheet below has the answers.
+  If you run a copy outside Argentina, check what your own data authority asks.
 - [ ] In Google Auth Platform, open Branding and add the links to `/privacy` and `/terms`, a
   support email and the home page address.
 - [ ] Save a copy of the Vercel, Neon and Anthropic DPAs.
-- [ ] Check that your PayPal account type allows donations for a website, and declare the
-  income. Ask a contador whether monotributo applies.
+- [ ] If you take donations, check that your PayPal account type allows them for a website, and
+  ask a local accountant how to declare the income.
 - [ ] After the first deploy, sign in once on the live site. Check the two cookies, and check
   that your session row has an empty IP address and browser string.
-- [ ] Rows written before `auth-hooks.ts` went live still hold an IP address, a browser
-  string, a photo link and Google's tokens. Sessions expire within 7 days and are deleted. An
-  account is cleaned the next time its owner signs in. Whether to clean the rest by hand is your call.
 
 ## AAIP registration sheet
 
-Check each answer against the form, because its fields may change.
+Check each answer against the form, because its fields may change. The first row names the
+person who runs the original site, so use your own details there.
 
 | Field | Answer |
 | --- | --- |
