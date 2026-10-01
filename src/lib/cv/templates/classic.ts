@@ -12,9 +12,16 @@ import {
 
 /* One column, two pages. Application portals that copy a CV into form fields
    (Workday, SuccessFactors, Taleo) read a single column in order, where the
-   sidebar's two columns come out interleaved. */
+   sidebar's two columns come out interleaved.
+
+   The page margins are cells of a table, not @page margins. A browser prints
+   its own header and footer (date, address, page number) into any @page
+   margin, and into none of a margin of 0, and someone who saves this from the
+   print dialog would find them on the CV. thead and tfoot repeat on every
+   page, so their empty cells give each page its top and bottom margin, as in
+   the sidebar template. Geometry, in mm: 15 left + 180 text + 15 right = 210. */
 export const css = `
-@page { size: A4; margin: 12mm 15mm 12mm 15mm; }
+@page { size: A4; margin: 0; }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -28,6 +35,23 @@ body {
      extract as "workﬂows" and miss an ATS keyword match. */
   font-variant-ligatures: none;
 }
+
+/* table-layout: fixed, or the declared width is only a suggestion: one long
+   URL would widen the cell and push the text into the right margin. */
+table.main {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.main td { padding: 0; vertical-align: top; }
+
+/* The repeating top and bottom margins. */
+table.main td.pad-top { height: 12mm; }
+table.main td.pad-bottom { height: 12mm; }
+
+/* Qualified with table.main, or the rule above wins on specificity. */
+table.main td.flow { padding: 0 15mm; }
 
 .header {
   display: flex;
@@ -216,5 +240,11 @@ export function body(cv: Cv, ctx: RenderContext): string {
 
   if (cv.hobbies.trim()) out.push(lineSection(labels.hobbies, cv.hobbies.trim(), ctx, "hobbies"));
 
-  return out.join("\n");
+  return [
+    `<table class="main">`,
+    `<thead><tr><td class="pad-top"></td></tr></thead>`,
+    `<tfoot><tr><td class="pad-bottom"></td></tr></tfoot>`,
+    `<tbody><tr><td class="flow">\n${out.join("\n")}\n</td></tr></tbody>`,
+    `</table>`,
+  ].join("\n");
 }

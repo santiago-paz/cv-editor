@@ -6,8 +6,9 @@ import { PDFDocument } from "pdf-lib";
 import { afterAll, describe, expect, it } from "vitest";
 import { duplicate } from "@/lib/cv/defaults";
 import { sampleCv } from "@/lib/cv/sample";
+import type { TemplateId } from "@/lib/cv/types";
 import { getBrowser } from "@/lib/server/chrome";
-import { makePdf } from "@/lib/server/pdf";
+import { makePdf, withCv } from "@/lib/server/pdf";
 
 /* The PDF route end to end, against a real Chrome. Skipped where there is
    none to start. pdftotext (poppler) reads the text back when it is there. */
@@ -63,6 +64,22 @@ describe.skipIf(!hasChrome)("makePdf", () => {
     if (text !== null) {
       expect(text.indexOf("Experience")).toBeLessThan(text.indexOf("Education"));
     }
+  });
+
+  /* The print dialog starts with "Headers and footers" on, and Chrome prints
+     them (the date, the title, the address, the page number) into any @page
+     margin. The same switch here stands for that tick. Both templates keep
+     their margins out of @page, so there is nowhere for the text to go. */
+  it.each<TemplateId>(["sidebar", "classic"])("prints no browser header or footer on %s", async template => {
+    const cv = duplicate(sampleCv(), template);
+    cv.template = template;
+    const plain = await withCv(cv, null, page => page.pdf({ printBackground: true, preferCSSPageSize: true }));
+    const dressed = await withCv(cv, null, page =>
+      page.pdf({ printBackground: true, preferCSSPageSize: true, displayHeaderFooter: true }),
+    );
+    const before = pdftotext(plain);
+    const after = pdftotext(dressed);
+    if (before !== null && after !== null) expect(after).toBe(before);
   });
 
   it("drops markup the templates do not allow", async () => {
