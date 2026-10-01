@@ -367,5 +367,5 @@ see `SECURITY.md`.
 
 ## License
 
-MIT. See `LICENSE`. The fonts keep their own license, described under Fonts
+WTFPL. See `LICENSE`. The fonts keep their own license, described under Fonts
 above.

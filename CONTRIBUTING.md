@@ -80,8 +80,8 @@ history stays public.
 
 ## License
 
-When you send a pull request, you agree that your work is under the MIT License,
-the same as the rest of the project.
+When you send a pull request, you agree that your work is under the WTFPL, the
+same as the rest of the project.
 
 ## Security
 
